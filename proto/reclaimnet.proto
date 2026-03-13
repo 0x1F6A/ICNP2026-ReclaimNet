@@ -1,0 +1,169 @@
+syntax = "proto3";
+package reclaimnet;
+option cc_generic_services = false;
+
+// ── Shared message types ─────────────────────────────────────────────────────
+
+message FiveTuple {
+  fixed32 src_ip   = 1;
+  fixed32 dst_ip   = 2;
+  uint32  src_port = 3;
+  uint32  dst_port = 4;
+  uint32  protocol = 5;
+}
+
+message BandwidthSample {
+  string node_id   = 1;
+  uint64 bps       = 2;
+  int64  timestamp = 3;   // Unix ns
+}
+
+message HazardSample {
+  string node_id     = 1;
+  double lambda_e    = 2;  // events per second
+  int64  timestamp   = 3;
+}
+
+message JobSpec {
+  string job_id          = 1;
+  string node_id         = 2;
+  uint64 vram_bytes      = 3;
+  uint64 checkpoint_size = 4;   // bytes, last known
+  double lambda_e        = 5;   // departure hazard seen at source
+  uint64 write_cap_bps   = 6;   // max NIC write speed for this job
+}
+
+message CheckpointInfo {
+  string job_id          = 1;
+  string node_id         = 2;
+  uint64 sequence        = 3;
+  uint64 size_bytes      = 4;
+  int64  completed_at    = 5;   // Unix ns
+  uint64 duration_ns     = 6;
+}
+
+message MigrationRequest {
+  string   job_id        = 1;
+  string   src_node_id   = 2;
+  double   tau_seconds   = 3;   // reclaim deadline; 0 = emergency
+  uint64   checkpoint_size = 4;
+  double   lambda_e_src  = 5;
+}
+
+message MigrationDecision {
+  string    job_id           = 1;
+  string    dst_node_id      = 2;
+  double    topology_cost    = 3;
+  double    survival_prob    = 4;
+  double    transfer_time    = 5;
+  uint64    allocated_bps    = 6;
+  FiveTuple flow_key         = 7;
+  bool      feasible         = 8;
+  string    reject_reason    = 9;
+}
+
+message CheckpointInterval {
+  string job_id            = 1;
+  uint64 interval_ns       = 2;
+  uint64 allocated_bps     = 3;
+}
+
+message KillSwitchCommand {
+  FiveTuple flow_key = 1;
+  bool      activate = 2;   // true=drop, false=remove
+}
+
+message RateLimit {
+  FiveTuple flow_key   = 1;
+  uint64    rate_bps   = 2;
+  uint64    burst_bytes= 3;
+}
+
+message TelemetryReport {
+  string                node_id          = 1;
+  repeated BandwidthSample bw_samples    = 2;
+  repeated HazardSample    hazard_samples= 3;
+  repeated CheckpointInfo  checkpoints   = 4;
+  int64                  timestamp       = 5;
+}
+
+message ReclaimEvent {
+  string node_id      = 1;
+  string job_id       = 2;
+  double tau_seconds  = 3;
+  int64  timestamp    = 4;
+  string type         = 5;  // "emergency" | "scheduled"
+}
+
+message RegisterRequest {
+  string node_id       = 1;
+  string address       = 2;
+  uint64 total_vram    = 3;
+  uint64 link_capacity = 4;
+  string building      = 5;
+  string switch_id     = 6;
+}
+
+message RegisterResponse {
+  bool   accepted  = 1;
+  string message   = 2;
+}
+
+message HeartbeatRequest {
+  string node_id     = 1;
+  uint64 free_vram   = 2;
+  uint64 active_jobs = 3;
+  int64  timestamp   = 4;
+}
+
+message HeartbeatResponse {
+  bool   ok      = 1;
+  int64  server_ts = 2;
+}
+
+message AdmissionResult {
+  bool   admitted     = 1;
+  string reason       = 2;
+  uint64 rate_bps     = 3;
+  uint64 burst_bytes  = 4;
+}
+
+message PrometheusSnapshot {
+  string metrics_text = 1;
+}
+
+message HealthStatus {
+  bool   healthy  = 1;
+  string version  = 2;
+  int64  uptime_s = 3;
+}
+
+message Empty {}
+
+// ── Coordinator service ───────────────────────────────────────────────────────
+
+service CoordinatorService {
+  // Node lifecycle
+  rpc Register         (RegisterRequest)    returns (RegisterResponse);
+  rpc Heartbeat        (HeartbeatRequest)   returns (HeartbeatResponse);
+
+  // Telemetry
+  rpc ReportTelemetry  (TelemetryReport)    returns (Empty);
+  rpc ReportReclaim    (ReclaimEvent)       returns (Empty);
+
+  // Migration
+  rpc RequestMigration (MigrationRequest)   returns (MigrationDecision);
+  rpc UpdateRateBudget (RateLimit)          returns (AdmissionResult);
+
+  // Observability
+  rpc GetPrometheusSnapshot (Empty)         returns (PrometheusSnapshot);
+}
+
+// ── NodeAgent service ─────────────────────────────────────────────────────────
+
+service NodeAgentService {
+  rpc ApplyCheckpointInterval  (CheckpointInterval)  returns (Empty);
+  rpc ApplyMigrationDecision   (MigrationDecision)   returns (Empty);
+  rpc ApplyKillSwitch          (KillSwitchCommand)   returns (Empty);
+  rpc HealthCheck              (Empty)               returns (HealthStatus);
+}
