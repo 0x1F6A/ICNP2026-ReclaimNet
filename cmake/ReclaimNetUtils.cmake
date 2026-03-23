@@ -1,4 +1,4 @@
-# ReclaimNetUtils.cmake - Utility macros for ReclaimNet build
+
 
 macro(reclaimnet_add_test target)
   add_executable(${target} ${ARGN})
