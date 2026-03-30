@@ -1,7 +1,7 @@
-/// @file config.cc
-/// @brief YAML-backed configuration loader for coordinator and agent processes.
-///
-/// Uses yaml-cpp for parsing. Falls back to defaults for optional fields.
+
+
+
+
 
 #include "reclaimnet/config.h"
 #include "reclaimnet/log.h"
@@ -10,7 +10,7 @@
 #include <sstream>
 #include <stdexcept>
 
-// yaml-cpp is optionally available; if not, config load reads nothing (all defaults).
+
 #if __has_include(<yaml-cpp/yaml.h>)
 #  include <yaml-cpp/yaml.h>
 #  define HAVE_YAML_CPP 1
@@ -20,7 +20,7 @@
 
 namespace reclaimnet {
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
+
 
 #if HAVE_YAML_CPP
 
@@ -72,9 +72,9 @@ static Result<AgentConfig> parse_agent(const YAML::Node& root) {
   return cfg;
 }
 
-#endif  // HAVE_YAML_CPP
+#endif
 
-// ── Public API ────────────────────────────────────────────────────────────────
+
 
 Result<CoordinatorConfig> load_coordinator_config(const std::string& path) {
 #if HAVE_YAML_CPP
@@ -134,4 +134,4 @@ VoidResult validate_agent_config(const AgentConfig& cfg) {
   return ok_void();
 }
 
-}  // namespace reclaimnet
+}

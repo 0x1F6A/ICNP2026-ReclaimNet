@@ -1,5 +1,5 @@
-/// @file time.cc
-/// @brief Implementation of duration formatting helpers.
+
+
 
 #include "reclaimnet/time.h"
 
@@ -9,7 +9,7 @@
 
 namespace reclaimnet {
 
-// ── format_duration_ns ────────────────────────────────────────────────────────
+
 
 std::string format_duration_ns(uint64_t ns) {
   std::array<char, 64> buf{};
@@ -25,7 +25,7 @@ std::string format_duration_ns(uint64_t ns) {
   return buf.data();
 }
 
-// ── format_timestamp_ns ───────────────────────────────────────────────────────
+
 
 std::string format_timestamp_ns(int64_t unix_ns) {
   std::array<char, 64> buf{};
@@ -44,4 +44,4 @@ std::string format_timestamp_ns(int64_t unix_ns) {
   return buf.data();
 }
 
-}  // namespace reclaimnet
+}

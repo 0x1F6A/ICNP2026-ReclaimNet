@@ -1,5 +1,5 @@
-/// @file mtls.cc
-/// @brief mTLS credential helpers for gRPC channels and servers.
+
+
 
 #include "reclaimnet/mtls.h"
 #include "reclaimnet/log.h"
@@ -8,14 +8,14 @@
 #include <sstream>
 #include <stdexcept>
 
-// Conditionally include gRPC headers.
+
 #if __has_include(<grpcpp/grpcpp.h>)
 #  include <grpcpp/grpcpp.h>
 #  include <grpcpp/security/credentials.h>
 #  define HAVE_GRPC 1
 #else
 #  define HAVE_GRPC 0
-   // Stub types for header compilation on machines without gRPC installed.
+
    namespace grpc {
      class ChannelCredentials {};
      class ServerCredentials {};
@@ -24,7 +24,7 @@
 
 namespace reclaimnet {
 
-// ── read_pem_file ─────────────────────────────────────────────────────────────
+
 
 Result<std::string> read_pem_file(const std::string& path) {
   std::ifstream ifs(path, std::ios::in | std::ios::binary);
@@ -39,7 +39,7 @@ Result<std::string> read_pem_file(const std::string& path) {
   return oss.str();
 }
 
-// ── load_tls_bundle ───────────────────────────────────────────────────────────
+
 
 Result<TlsBundle> load_tls_bundle(
     const std::string& cert_path,
@@ -61,7 +61,7 @@ Result<TlsBundle> load_tls_bundle(
   return b;
 }
 
-// ── make_client_credentials ───────────────────────────────────────────────────
+
 
 Result<std::shared_ptr<grpc::ChannelCredentials>>
 make_client_credentials(const TlsBundle& bundle) {
@@ -77,7 +77,7 @@ make_client_credentials(const TlsBundle& bundle) {
 #endif
 }
 
-// ── make_server_credentials ───────────────────────────────────────────────────
+
 
 Result<std::shared_ptr<grpc::ServerCredentials>>
 make_server_credentials(const TlsBundle& bundle) {
@@ -95,7 +95,7 @@ make_server_credentials(const TlsBundle& bundle) {
 #endif
 }
 
-// ── insecure helpers ──────────────────────────────────────────────────────────
+
 
 std::shared_ptr<grpc::ChannelCredentials> insecure_channel_credentials() {
 #if HAVE_GRPC
@@ -113,4 +113,4 @@ std::shared_ptr<grpc::ServerCredentials> insecure_server_credentials() {
 #endif
 }
 
-}  // namespace reclaimnet
+}

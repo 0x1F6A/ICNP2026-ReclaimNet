@@ -1,5 +1,5 @@
-/// @file log.cc
-/// @brief Logger implementation – stderr backend with ISO-8601 timestamps.
+
+
 
 #include "reclaimnet/log.h"
 #include "reclaimnet/time.h"
@@ -13,7 +13,7 @@
 
 namespace reclaimnet {
 
-// ── Level string table ─────────────────────────────────────────────────────
+
 
 const char* Logger::level_str(LogLevel l) noexcept {
   switch (l) {
@@ -26,20 +26,20 @@ const char* Logger::level_str(LogLevel l) noexcept {
   }
 }
 
-// ── Logger::log ──────────────────────────────────────────────────────────────
+
 
 void Logger::log(LogLevel sev, const SourceLocation& loc,
                  const char* fmt, ...) noexcept {
   if (sev < level_.load(std::memory_order_relaxed)) return;
 
-  // Format the user message first (outside the lock).
+
   std::array<char, 2048> user_buf{};
   va_list ap;
   va_start(ap, fmt);
   vsnprintf(user_buf.data(), user_buf.size(), fmt, ap);
   va_end(ap);
 
-  // Build ISO-8601 timestamp.
+
   std::array<char, 64> ts_buf{};
   {
     int64_t ns = now_ns();
@@ -57,7 +57,7 @@ void Logger::log(LogLevel sev, const SourceLocation& loc,
              tm_utc.tm_hour, tm_utc.tm_min, tm_utc.tm_sec, ms);
   }
 
-  // Extract just the base filename for brevity.
+
   const char* file = loc.file;
   const char* slash = strrchr(file, '/');
   if (slash) file = slash + 1;
@@ -66,7 +66,7 @@ void Logger::log(LogLevel sev, const SourceLocation& loc,
   if (bslash) file = bslash + 1;
 #endif
 
-  // Emit (serialised).
+
   std::lock_guard<std::mutex> lk(mu_);
   fprintf(stderr, "[%s] [%s] [%s:%d %s] %s\n",
           ts_buf.data(), level_str(sev),
@@ -74,4 +74,4 @@ void Logger::log(LogLevel sev, const SourceLocation& loc,
           user_buf.data());
 }
 
-}  // namespace reclaimnet
+}

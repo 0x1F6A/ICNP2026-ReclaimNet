@@ -1,5 +1,5 @@
-/// @file prometheus.cc
-/// @brief Prometheus text-format metrics registry implementation.
+
+
 
 #include "reclaimnet/prometheus.h"
 
@@ -10,7 +10,7 @@
 
 namespace reclaimnet {
 
-// ── LabelSet ──────────────────────────────────────────────────────────────────
+
 
 std::string LabelSet::to_string() const {
   if (labels.empty()) return "";
@@ -24,7 +24,7 @@ std::string LabelSet::to_string() const {
   return oss.str();
 }
 
-// ── Counter ───────────────────────────────────────────────────────────────────
+
 
 std::string Counter::serialize() const {
   std::ostringstream oss;
@@ -34,7 +34,7 @@ std::string Counter::serialize() const {
   return oss.str();
 }
 
-// ── Gauge ─────────────────────────────────────────────────────────────────────
+
 
 std::string Gauge::serialize() const {
   std::ostringstream oss;
@@ -44,7 +44,7 @@ std::string Gauge::serialize() const {
   return oss.str();
 }
 
-// ── Histogram ─────────────────────────────────────────────────────────────────
+
 
 Histogram::Histogram(std::string name, std::string help,
                      std::vector<double> boundaries,
@@ -56,7 +56,7 @@ Histogram::Histogram(std::string name, std::string help,
 
 void Histogram::observe(double value) noexcept {
   std::lock_guard<std::mutex> lk(mu_);
-  // Find the first bucket >= value.
+
   for (size_t i = 0; i < boundaries_.size(); ++i) {
     if (value <= boundaries_[i]) {
       bucket_counts_[i]++;
@@ -65,7 +65,7 @@ void Histogram::observe(double value) noexcept {
       return;
     }
   }
-  // Overflow bucket.
+
   bucket_counts_.back()++;
   count_++;
   sum_ += value;
@@ -82,17 +82,17 @@ std::string Histogram::serialize() const {
   uint64_t cumulative = 0;
   for (size_t i = 0; i < boundaries_.size(); ++i) {
     cumulative += bucket_counts_[i];
-    // Inline label injection for le boundary.
+
     std::string le_label;
     if (ls.empty()) {
       le_label = "{le=\"" + std::to_string(boundaries_[i]) + "\"}";
     } else {
-      std::string base = ls.substr(0, ls.size() - 1);  // strip trailing "}"
+      std::string base = ls.substr(0, ls.size() - 1);
       le_label = base + ",le=\"" + std::to_string(boundaries_[i]) + "\"}";
     }
     oss << name_ << "_bucket" << le_label << " " << cumulative << "\n";
   }
-  // +Inf bucket.
+
   {
     cumulative += bucket_counts_.back();
     std::string inf_label = ls.empty() ? "{le=\"+Inf\"}" : (ls.substr(0, ls.size()-1) + ",le=\"+Inf\"}");
@@ -104,7 +104,7 @@ std::string Histogram::serialize() const {
   return oss.str();
 }
 
-// ── MetricRegistry ────────────────────────────────────────────────────────────
+
 
 Counter& MetricRegistry::counter(std::string name, std::string help, LabelSet labels) {
   std::lock_guard<std::mutex> lk(mu_);
@@ -152,4 +152,4 @@ std::string MetricRegistry::render() const {
   return oss.str();
 }
 
-}  // namespace reclaimnet
+}
