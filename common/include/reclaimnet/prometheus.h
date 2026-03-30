@@ -1,9 +1,9 @@
-/// @file prometheus.h
-/// @brief Lightweight Prometheus text-format metrics registry.
-///
-/// Implements the /metrics exposition format (text/plain; version=0.0.4).
-/// Provides Counter, Gauge, and Histogram types.  All operations are
-/// thread-safe via a shared mutex on the registry.
+
+
+
+
+
+
 
 #pragma once
 
@@ -18,23 +18,23 @@
 
 namespace reclaimnet {
 
-// Forward declarations
+
 class Counter;
 class Gauge;
 class Histogram;
 
-// ── MetricFamily ─────────────────────────────────────────────────────────────
 
-/// A labelled metric instance (single time-series).
+
+
 struct LabelSet {
   std::vector<std::pair<std::string,std::string>> labels;
 
   std::string to_string() const;
 };
 
-// ── Counter ──────────────────────────────────────────────────────────────────
 
-/// Monotonically increasing counter.
+
+
 class Counter {
  public:
   explicit Counter(std::string name, std::string help, LabelSet labels = {})
@@ -57,9 +57,9 @@ class Counter {
   std::atomic<uint64_t> value_;
 };
 
-// ── Gauge ────────────────────────────────────────────────────────────────────
 
-/// Instantaneous gauge metric (can go up or down).
+
+
 class Gauge {
  public:
   explicit Gauge(std::string name, std::string help, LabelSet labels = {})
@@ -96,9 +96,9 @@ class Gauge {
   double              value_ = 0.0;
 };
 
-// ── Histogram ────────────────────────────────────────────────────────────────
 
-/// Observation histogram with configurable bucket boundaries.
+
+
 class Histogram {
  public:
   Histogram(std::string name, std::string help,
@@ -122,9 +122,9 @@ class Histogram {
   double                sum_    = 0.0;
 };
 
-// ── Registry ─────────────────────────────────────────────────────────────────
 
-/// Central metric registry.  Typically used as a singleton.
+
+
 class MetricRegistry {
  public:
   static MetricRegistry& instance() {
@@ -132,13 +132,13 @@ class MetricRegistry {
     return inst;
   }
 
-  /// Register and return a counter.  Idempotent by name.
+
   Counter&   counter(std::string name, std::string help, LabelSet labels = {});
   Gauge&     gauge(std::string name, std::string help, LabelSet labels = {});
   Histogram& histogram(std::string name, std::string help,
                        std::vector<double> bounds, LabelSet labels = {});
 
-  /// Render all metrics in Prometheus text format.
+
   std::string render() const;
 
  private:
@@ -150,21 +150,21 @@ class MetricRegistry {
   std::unordered_map<std::string, std::unique_ptr<Histogram>> histograms_;
 };
 
-// ── Default histogram boundaries ─────────────────────────────────────────────
 
-/// Checkpoint interval boundaries (seconds).
+
+
 inline std::vector<double> checkpoint_interval_buckets() {
   return {1, 5, 10, 30, 60, 120, 300, 600};
 }
 
-/// Migration transfer time boundaries (seconds).
+
 inline std::vector<double> migration_time_buckets() {
   return {0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0};
 }
 
-/// Bandwidth allocation buckets (Mbps).
+
 inline std::vector<double> bw_allocation_buckets() {
   return {10e6, 50e6, 100e6, 250e6, 500e6, 1000e6, 2500e6, 10000e6};
 }
 
-}  // namespace reclaimnet
+}
