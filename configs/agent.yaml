@@ -1,0 +1,19 @@
+
+
+
+node_id:                "node-001"
+building:               "BuildingA"
+switch_id:              "sw-rack01"
+coordinator_address:    "coordinator:50051"
+listen_address:         "0.0.0.0:50052"
+total_vram_bytes:       17179869184
+link_capacity_bps:      100000000000
+iface:                  "eth0"
+checkpoint_dir:         "/var/reclaimnet/checkpoints"
+tls_cert_path:          "certs/agent.crt"
+tls_key_path:           "certs/agent.key"
+tls_ca_path:            "certs/ca.crt"
+mtls_enabled:           false
+telemetry_interval_s:   5.0
+heartbeat_interval_s:   30.0
+migration_recv_buf:     67108864

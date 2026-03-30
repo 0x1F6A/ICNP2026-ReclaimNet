@@ -1,0 +1,21 @@
+
+
+
+
+listen_address:       "0.0.0.0:50051"
+epoch_seconds:        30.0
+B_ckpt_bps:           10000000000
+migration_share:      0.40
+alpha:                1.0
+beta:                 2.0
+gamma:                0.5
+sqlite_path:          "data/reclaimnet.db"
+prometheus_port:      9090
+tls_cert_path:        "certs/coordinator.crt"
+tls_key_path:         "certs/coordinator.key"
+tls_ca_path:          "certs/ca.crt"
+mtls_enabled:         false
+heartbeat_timeout_s:  90.0
+topology_file:        "configs/topology.json"
+hazard_decay_s:       3600.0
+max_migration_queue:  64
