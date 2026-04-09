@@ -1,5 +1,5 @@
-/// @file p1_allocator.cc
-/// @brief P1 checkpoint-interval + bandwidth allocation implementation.
+
+
 
 #include "reclaimnet/p1_allocator.h"
 #include "reclaimnet/log.h"
@@ -12,21 +12,21 @@
 namespace reclaimnet {
 namespace control {
 
-// ── Constructor ───────────────────────────────────────────────────────────────
+
 
 P1Allocator::P1Allocator(double B_ckpt_bps)
   : B_ckpt_bps_(B_ckpt_bps) {}
 
-// ── optimal_interval_s ────────────────────────────────────────────────────────
-//   Δt* = sqrt(2C / (λ_e · B_eff))
+
+
 
 double P1Allocator::optimal_interval_s(double lambda_e, double C, double B_eff) noexcept {
-  if (lambda_e <= 0.0 || B_eff <= 0.0 || C <= 0.0) return 300.0;  // fallback 5 min
+  if (lambda_e <= 0.0 || B_eff <= 0.0 || C <= 0.0) return 300.0;
   return std::sqrt(2.0 * C / (lambda_e * B_eff));
 }
 
-// ── proportional_alloc ────────────────────────────────────────────────────────
-//   b_i = B_ckpt · (λ_i · C_i)^(1/3) / Σ (λ_j · C_j)^(1/3)
+
+
 
 std::vector<double> P1Allocator::proportional_alloc(
     const std::vector<P1JobInput>& jobs) const {
@@ -40,7 +40,7 @@ std::vector<double> P1Allocator::proportional_alloc(
   }
   std::vector<double> alloc(jobs.size(), 0.0);
   if (denom < 1e-15) {
-    // Degenerate: uniform split.
+
     double share = B_ckpt_bps_ / (double)jobs.size();
     std::fill(alloc.begin(), alloc.end(), share);
   } else {
@@ -50,7 +50,7 @@ std::vector<double> P1Allocator::proportional_alloc(
   return alloc;
 }
 
-// ── water_fill ────────────────────────────────────────────────────────────────
+
 
 std::vector<double> P1Allocator::water_fill(
     const std::vector<P1JobInput>& jobs,
@@ -61,7 +61,7 @@ std::vector<double> P1Allocator::water_fill(
   double budget = B_ckpt_bps_;
 
   for (; iter < MAX_ITERS; ++iter) {
-    // Identify capped jobs.
+
     std::vector<bool> capped(jobs.size(), false);
     double capped_sum = 0.0;
     bool any_new_cap = false;
@@ -76,7 +76,7 @@ std::vector<double> P1Allocator::water_fill(
     }
     if (!any_new_cap) break;
 
-    // Redistribute surplus among un-capped jobs.
+
     double surplus    = budget - capped_sum;
     double free_denom = 0.0;
     for (size_t i = 0; i < jobs.size(); ++i) {
@@ -93,13 +93,13 @@ std::vector<double> P1Allocator::water_fill(
         alloc[i]  = surplus * w / free_denom;
       }
     }
-    budget = surplus + capped_sum;  // invariant
+    budget = surplus + capped_sum;
   }
   if (iters_out) *iters_out = iter;
   return alloc;
 }
 
-// ── compute ───────────────────────────────────────────────────────────────────
+
 
 P1EpochResult P1Allocator::compute(const std::vector<P1JobInput>& jobs) const {
   if (jobs.empty()) return {{}, 0.0, 0};
@@ -123,5 +123,5 @@ P1EpochResult P1Allocator::compute(const std::vector<P1JobInput>& jobs) const {
   return {schedules, total, iters};
 }
 
-}  // namespace control
-}  // namespace reclaimnet
+}
+}

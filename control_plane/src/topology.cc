@@ -1,5 +1,5 @@
-/// @file topology.cc
-/// @brief TopologyGraph – adjacency list, Dijkstra, topology-level lookup.
+
+
 
 #include "reclaimnet/topology.h"
 #include "reclaimnet/log.h"
@@ -10,7 +10,7 @@
 #include <fstream>
 #include <sstream>
 
-// Optional JSON support (nlohmann/json).
+
 #if __has_include(<nlohmann/json.hpp>)
 #  include <nlohmann/json.hpp>
 #  define HAVE_JSON 1
@@ -23,18 +23,18 @@ namespace control {
 
 const std::vector<Link> TopologyGraph::empty_links_{};
 
-// ── add_link ─────────────────────────────────────────────────────────────────
+
 
 void TopologyGraph::add_link(const Link& link) {
   adj_[link.src].push_back(link);
-  // Bidirectional: also add reverse.
+
   Link rev = link;
   std::swap(rev.src, rev.dst);
   adj_[link.dst].push_back(rev);
   link_count_ += 2;
 }
 
-// ── links_from ────────────────────────────────────────────────────────────────
+
 
 const std::vector<Link>& TopologyGraph::links_from(const NodeId& n) const {
   auto it = adj_.find(n);
@@ -42,7 +42,7 @@ const std::vector<Link>& TopologyGraph::links_from(const NodeId& n) const {
   return it->second;
 }
 
-// ── all_nodes ─────────────────────────────────────────────────────────────────
+
 
 std::vector<NodeId> TopologyGraph::all_nodes() const {
   std::vector<NodeId> out;
@@ -51,7 +51,7 @@ std::vector<NodeId> TopologyGraph::all_nodes() const {
   return out;
 }
 
-// ── shortest_path (Dijkstra) ─────────────────────────────────────────────────
+
 
 std::optional<PathResult> TopologyGraph::shortest_path(
     const NodeId& src, const NodeId& dst) const {
@@ -89,14 +89,14 @@ std::optional<PathResult> TopologyGraph::shortest_path(
 
   if (dist.find(dst) == dist.end()) return std::nullopt;
 
-  // Reconstruct path.
+
   std::vector<NodeId> path;
   for (NodeId cur = dst; cur != src; cur = prev.at(cur))
     path.push_back(cur);
   path.push_back(src);
   std::reverse(path.begin(), path.end());
 
-  // Determine max topology level along path.
+
   TopologyLevel max_lvl = TopologyLevel::NVLink;
   for (size_t i = 0; i + 1 < path.size(); ++i) {
     max_lvl = std::max(max_lvl, level_between(path[i], path[i+1]));
@@ -105,16 +105,16 @@ std::optional<PathResult> TopologyGraph::shortest_path(
   return PathResult{path, dist.at(dst), bottleneck.at(dst), max_lvl};
 }
 
-// ── level_between ─────────────────────────────────────────────────────────────
+
 
 TopologyLevel TopologyGraph::level_between(const NodeId& a, const NodeId& b) const {
   auto key = a + ":" + b;
-  // Check direct_cache_ first.
+
   {
     auto it = direct_cache_.find(key);
     if (it != direct_cache_.end()) return it->second.level;
   }
-  // Scan adjacency.
+
   for (const Link& lk : links_from(a)) {
     if (lk.dst == b) {
       direct_cache_[key] = lk;
@@ -124,7 +124,7 @@ TopologyLevel TopologyGraph::level_between(const NodeId& a, const NodeId& b) con
   return TopologyLevel::InterRack;
 }
 
-// ── load_from_file ────────────────────────────────────────────────────────────
+
 
 Result<TopologyGraph> TopologyGraph::load_from_file(const std::string& path) {
 #if HAVE_JSON
@@ -161,5 +161,5 @@ Result<TopologyGraph> TopologyGraph::load_from_file(const std::string& path) {
 #endif
 }
 
-}  // namespace control
-}  // namespace reclaimnet
+}
+}

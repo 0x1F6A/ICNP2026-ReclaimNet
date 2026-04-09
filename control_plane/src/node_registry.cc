@@ -1,5 +1,5 @@
-/// @file node_registry.cc
-/// @brief Thread-safe in-memory node registry.
+
+
 
 #include "reclaimnet/node_registry.h"
 #include "reclaimnet/log.h"
@@ -79,5 +79,5 @@ uint64_t NodeRegistry::free_vram(const NodeId& id) const {
   return it->second.telemetry.vram_free_bytes;
 }
 
-}  // namespace control
-}  // namespace reclaimnet
+}
+}

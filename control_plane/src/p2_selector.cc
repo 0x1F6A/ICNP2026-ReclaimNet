@@ -1,5 +1,5 @@
-/// @file p2_selector.cc
-/// @brief P2 volatility-aware migration destination selection.
+
+
 
 #include "reclaimnet/p2_selector.h"
 #include "reclaimnet/log.h"
@@ -11,8 +11,8 @@
 namespace reclaimnet {
 namespace control {
 
-// ── topology_dist_score ───────────────────────────────────────────────────────
-// Maps TopologyLevel to a normalised [0,1] distance score.
+
+
 
 double P2Selector::topology_dist_score(TopologyLevel lvl) noexcept {
   switch (lvl) {
@@ -25,7 +25,7 @@ double P2Selector::topology_dist_score(TopologyLevel lvl) noexcept {
   }
 }
 
-// ── Constructor ───────────────────────────────────────────────────────────────
+
 
 P2Selector::P2Selector(double alpha, double beta, double gamma,
                        const TopologyGraph& topo,
@@ -34,7 +34,7 @@ P2Selector::P2Selector(double alpha, double beta, double gamma,
   : alpha_(alpha), beta_(beta), gamma_(gamma),
     topo_(topo), hazard_(hazard), nodes_(nodes) {}
 
-// ── evaluate ──────────────────────────────────────────────────────────────────
+
 
 P2Candidate P2Selector::evaluate(
     const NodeRecord& candidate,
@@ -46,7 +46,7 @@ P2Candidate P2Selector::evaluate(
   c.node_id  = candidate.node_id;
   c.feasible = true;
 
-  // Feasibility check: C_size/B + T_r > τ → infeasible
+
   if (candidate.link_capacity_bps > 0.0) {
     double T_transfer = static_cast<double>(q.checkpoint_size_b)
                         / candidate.link_capacity_bps;
@@ -64,7 +64,7 @@ P2Candidate P2Selector::evaluate(
     return c;
   }
 
-  // Sufficient VRAM check.
+
   if (candidate.telemetry.vram_free_bytes < q.checkpoint_size_b) {
     c.feasible          = false;
     c.infeasible_reason = "insufficient VRAM";
@@ -72,27 +72,27 @@ P2Candidate P2Selector::evaluate(
     return c;
   }
 
-  // Survival probability.
+
   c.survival_prob = hazard_.survival_prob(candidate.node_id, horizon_s);
 
-  // Topology distance.
+
   TopologyLevel lvl = topo_.level_between(q.source_node, candidate.node_id);
   c.topology_dist   = topology_dist_score(lvl);
 
-  // Composite cost: α·T + β·(1-S) + γ·D
+
   c.composite_cost = eff_alpha * c.T_transfer_s
                    + eff_beta  * (1.0 - c.survival_prob)
                    + eff_gamma * c.topology_dist;
   return c;
 }
 
-// ── select ────────────────────────────────────────────────────────────────────
+
 
 P2Result P2Selector::select(const P2Query& q, double horizon_s) const {
   P2Result result;
   result.success = false;
 
-  // Effective weights: use query overrides when non-zero.
+
   double ea = q.alpha > 0.0 ? q.alpha : alpha_;
   double eb = q.beta  > 0.0 ? q.beta  : beta_;
   double eg = q.gamma > 0.0 ? q.gamma : gamma_;
@@ -100,12 +100,12 @@ P2Result P2Selector::select(const P2Query& q, double horizon_s) const {
   auto all_nodes = nodes_.by_state(NodeState::ACTIVE);
 
   for (const NodeRecord& rec : all_nodes) {
-    if (rec.node_id == q.source_node) continue;  // skip self
+    if (rec.node_id == q.source_node) continue;
     P2Candidate c = evaluate(rec, q, ea, eb, eg, horizon_s);
     result.ranked.push_back(c);
   }
 
-  // Sort: feasible first, then by composite_cost ascending.
+
   std::sort(result.ranked.begin(), result.ranked.end(),
     [](const P2Candidate& a, const P2Candidate& b) {
       if (a.feasible != b.feasible) return (int)a.feasible > (int)b.feasible;
@@ -125,5 +125,5 @@ P2Result P2Selector::select(const P2Query& q, double horizon_s) const {
   return result;
 }
 
-}  // namespace control
-}  // namespace reclaimnet
+}
+}

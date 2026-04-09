@@ -1,5 +1,5 @@
-/// @file p3_admission.cc
-/// @brief P3 migration admission controller with per-link token buckets.
+
+
 
 #include "reclaimnet/p3_admission.h"
 #include "reclaimnet/log.h"
@@ -10,7 +10,7 @@
 namespace reclaimnet {
 namespace control {
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 std::string P3Admission::link_key(const NodeId& s, const NodeId& d) {
   return s + ":" + d;
@@ -23,12 +23,12 @@ double P3Admission::available_bps(const std::string& key) const {
   return std::max(0.0, cap - it->second.allocated_bps);
 }
 
-// ── Constructor ───────────────────────────────────────────────────────────────
+
 
 P3Admission::P3Admission(double migration_share)
   : migration_share_(migration_share) {}
 
-// ── add_link ─────────────────────────────────────────────────────────────────
+
 
 void P3Admission::add_link(const NodeId& src, const NodeId& dst, double cap_bps) {
   std::lock_guard<std::mutex> lk(mu_);
@@ -36,7 +36,7 @@ void P3Admission::add_link(const NodeId& src, const NodeId& dst, double cap_bps)
   links_.emplace(key, LinkState{src, dst, cap_bps, 0.0, 0});
 }
 
-// ── admit ─────────────────────────────────────────────────────────────────────
+
 
 VoidResult P3Admission::admit(const MigrationEntry& entry) {
   std::lock_guard<std::mutex> lk(mu_);
@@ -49,7 +49,7 @@ VoidResult P3Admission::admit(const MigrationEntry& entry) {
                     " for job " + entry.job_id);
   }
 
-  // Grant all available bandwidth (P3 greedy admit).
+
   MigrationEntry e       = entry;
   e.allocated_bps        = avail;
   migrations_.emplace(entry.job_id, e);
@@ -64,7 +64,7 @@ VoidResult P3Admission::admit(const MigrationEntry& entry) {
   return ok_void();
 }
 
-// ── release ───────────────────────────────────────────────────────────────────
+
 
 void P3Admission::release(const JobId& job_id) {
   std::lock_guard<std::mutex> lk(mu_);
@@ -81,7 +81,7 @@ void P3Admission::release(const JobId& job_id) {
   LOG_DEBUG("P3: released job=%s", job_id.c_str());
 }
 
-// ── update_progress ───────────────────────────────────────────────────────────
+
 
 void P3Admission::update_progress(const JobId& job_id, uint64_t bytes_done) {
   std::lock_guard<std::mutex> lk(mu_);
@@ -93,7 +93,7 @@ void P3Admission::update_progress(const JobId& job_id, uint64_t bytes_done) {
     it->second.data_remaining_bytes -= bytes_done;
 }
 
-// ── expired_migrations ────────────────────────────────────────────────────────
+
 
 std::vector<MigrationEntry> P3Admission::expired_migrations(double now_s) const {
   std::lock_guard<std::mutex> lk(mu_);
@@ -103,7 +103,7 @@ std::vector<MigrationEntry> P3Admission::expired_migrations(double now_s) const 
   return out;
 }
 
-// ── active_migrations ─────────────────────────────────────────────────────────
+
 
 std::vector<MigrationEntry> P3Admission::active_migrations() const {
   std::lock_guard<std::mutex> lk(mu_);
@@ -113,7 +113,7 @@ std::vector<MigrationEntry> P3Admission::active_migrations() const {
   return out;
 }
 
-// ── link_states ───────────────────────────────────────────────────────────────
+
 
 std::vector<LinkState> P3Admission::link_states() const {
   std::lock_guard<std::mutex> lk(mu_);
@@ -123,7 +123,7 @@ std::vector<LinkState> P3Admission::link_states() const {
   return out;
 }
 
-// ── emergency_drain ───────────────────────────────────────────────────────────
+
 
 void P3Admission::emergency_drain(const NodeId& src) {
   std::lock_guard<std::mutex> lk(mu_);
@@ -132,12 +132,12 @@ void P3Admission::emergency_drain(const NodeId& src) {
   LOG_WARN("P3: emergency drain signalled for node %s", src.c_str());
 }
 
-// ── active_count ─────────────────────────────────────────────────────────────
+
 
 size_t P3Admission::active_count() const {
   std::lock_guard<std::mutex> lk(mu_);
   return migrations_.size();
 }
 
-}  // namespace control
-}  // namespace reclaimnet
+}
+}

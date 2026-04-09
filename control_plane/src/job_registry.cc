@@ -1,5 +1,5 @@
-/// @file job_registry.cc
-/// @brief Thread-safe in-memory job registry.
+
+
 
 #include "reclaimnet/job_registry.h"
 #include "reclaimnet/log.h"
@@ -71,5 +71,5 @@ std::vector<JobRecord> JobRegistry::all() const {
   return out;
 }
 
-}  // namespace control
-}  // namespace reclaimnet
+}
+}
