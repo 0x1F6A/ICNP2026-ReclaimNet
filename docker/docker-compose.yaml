@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  coordinator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.coordinator
+    image: reclaimnet/coordinator:latest
+    container_name: reclaimnet-coordinator
+    ports:
+      - "50051:50051"
+      - "9090:9090"
+    volumes:
+      - ./configs:/etc/reclaimnet:ro
+      - coordinator-data:/data
+    environment:
+      - RECLAIMNET_LOG_LEVEL=INFO
+
+  agent-001:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    image: reclaimnet/agent:latest
+    container_name: reclaimnet-agent-001
+    cap_add:
+      - NET_ADMIN
+    network_mode: host
+    depends_on:
+      - coordinator
+    environment:
+      - RECLAIMNET_NODE_ID=node-001
+    volumes:
+      - ./configs/agent.yaml:/etc/reclaimnet/agent.yaml:ro
+      - agent-ckpt-001:/var/reclaimnet/checkpoints
+
+volumes:
+  coordinator-data:
+  agent-ckpt-001:

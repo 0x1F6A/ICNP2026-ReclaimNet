@@ -1,0 +1,32 @@
+FROM ubuntu:22.04 AS builder
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git pkg-config \
+    libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc \
+    libsqlite3-dev libyaml-cpp-dev nlohmann-json3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY . .
+
+RUN cmake -S . -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/opt/reclaimnet \
+    && cmake --build build --parallel $(nproc) \
+    && cmake --install build
+
+
+FROM ubuntu:22.04 AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgrpc++1 libprotobuf23 libsqlite3-0 libyaml-cpp0.7 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/reclaimnet /opt/reclaimnet
+COPY configs/ /etc/reclaimnet/
+
+ENV PATH=/opt/reclaimnet/bin:$PATH
+
+EXPOSE 50051 9090
+
+ENTRYPOINT ["coordinator", "/etc/reclaimnet/coordinator.yaml"]

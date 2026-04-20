@@ -1,0 +1,35 @@
+FROM ubuntu:22.04 AS builder
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git pkg-config \
+    libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc \
+    libsqlite3-dev libyaml-cpp-dev nlohmann-json3-dev \
+    libbpf-dev clang llvm linux-headers-generic \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY . .
+
+RUN cmake -S . -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/opt/reclaimnet \
+    && cmake --build build --parallel $(nproc) \
+    && cmake --install build
+
+
+FROM ubuntu:22.04 AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgrpc++1 libprotobuf23 libyaml-cpp0.7 libbpf0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/reclaimnet /opt/reclaimnet
+COPY --from=builder /src/data_plane/*.bpf.o /opt/reclaimnet/data_plane/
+COPY configs/agent.yaml /etc/reclaimnet/agent.yaml
+
+ENV PATH=/opt/reclaimnet/bin:$PATH
+
+
+
+
+ENTRYPOINT ["node_agent", "/etc/reclaimnet/agent.yaml"]
