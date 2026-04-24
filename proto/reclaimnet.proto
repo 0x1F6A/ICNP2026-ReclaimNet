@@ -2,7 +2,7 @@ syntax = "proto3";
 package reclaimnet;
 option cc_generic_services = false;
 
-// ── Shared message types ─────────────────────────────────────────────────────
+
 
 message FiveTuple {
   fixed32 src_ip   = 1;
@@ -15,12 +15,12 @@ message FiveTuple {
 message BandwidthSample {
   string node_id   = 1;
   uint64 bps       = 2;
-  int64  timestamp = 3;   // Unix ns
+  int64  timestamp = 3;
 }
 
 message HazardSample {
   string node_id     = 1;
-  double lambda_e    = 2;  // events per second
+  double lambda_e    = 2;
   int64  timestamp   = 3;
 }
 
@@ -28,9 +28,9 @@ message JobSpec {
   string job_id          = 1;
   string node_id         = 2;
   uint64 vram_bytes      = 3;
-  uint64 checkpoint_size = 4;   // bytes, last known
-  double lambda_e        = 5;   // departure hazard seen at source
-  uint64 write_cap_bps   = 6;   // max NIC write speed for this job
+  uint64 checkpoint_size = 4;
+  double lambda_e        = 5;
+  uint64 write_cap_bps   = 6;
 }
 
 message CheckpointInfo {
@@ -38,14 +38,14 @@ message CheckpointInfo {
   string node_id         = 2;
   uint64 sequence        = 3;
   uint64 size_bytes      = 4;
-  int64  completed_at    = 5;   // Unix ns
+  int64  completed_at    = 5;
   uint64 duration_ns     = 6;
 }
 
 message MigrationRequest {
   string   job_id        = 1;
   string   src_node_id   = 2;
-  double   tau_seconds   = 3;   // reclaim deadline; 0 = emergency
+  double   tau_seconds   = 3;
   uint64   checkpoint_size = 4;
   double   lambda_e_src  = 5;
 }
@@ -70,7 +70,7 @@ message CheckpointInterval {
 
 message KillSwitchCommand {
   FiveTuple flow_key = 1;
-  bool      activate = 2;   // true=drop, false=remove
+  bool      activate = 2;
 }
 
 message RateLimit {
@@ -92,7 +92,7 @@ message ReclaimEvent {
   string job_id       = 2;
   double tau_seconds  = 3;
   int64  timestamp    = 4;
-  string type         = 5;  // "emergency" | "scheduled"
+  string type         = 5;
 }
 
 message RegisterRequest {
@@ -140,26 +140,26 @@ message HealthStatus {
 
 message Empty {}
 
-// ── Coordinator service ───────────────────────────────────────────────────────
+
 
 service CoordinatorService {
-  // Node lifecycle
+
   rpc Register         (RegisterRequest)    returns (RegisterResponse);
   rpc Heartbeat        (HeartbeatRequest)   returns (HeartbeatResponse);
 
-  // Telemetry
+
   rpc ReportTelemetry  (TelemetryReport)    returns (Empty);
   rpc ReportReclaim    (ReclaimEvent)       returns (Empty);
 
-  // Migration
+
   rpc RequestMigration (MigrationRequest)   returns (MigrationDecision);
   rpc UpdateRateBudget (RateLimit)          returns (AdmissionResult);
 
-  // Observability
+
   rpc GetPrometheusSnapshot (Empty)         returns (PrometheusSnapshot);
 }
 
-// ── NodeAgent service ─────────────────────────────────────────────────────────
+
 
 service NodeAgentService {
   rpc ApplyCheckpointInterval  (CheckpointInterval)  returns (Empty);
