@@ -1,6 +1,6 @@
 # ReclaimNet
 
-**ReclaimNet** is a production-grade C++17 research prototype for voluntary GPU sharing, targeting ICNP 2026. It implements three cooperative protocols:
+**ReclaimNet** is a production-grade C++17 research prototype for voluntary GPU sharing. It implements three cooperative protocols:
 
 | Protocol | Name | Core Idea |
 |----------|------|-----------|
@@ -36,17 +36,7 @@ sudo apt-get install -y build-essential cmake \
 ./scripts/build.sh Release
 
 # Run tests
-./scripts/run_tests.sh
-```
 
-### macOS
-
-The project builds on macOS (Intel/Apple Silicon) with gRPC installed via Homebrew. eBPF programs are silently disabled.
-
-```bash
-brew install grpc protobuf sqlite yaml-cpp nlohmann-json
-./scripts/build.sh Release
-```
 
 ## Running
 
@@ -67,32 +57,6 @@ brew install grpc protobuf sqlite yaml-cpp nlohmann-json
 cd docker
 docker compose up --build
 ```
-
-## P1: Checkpoint Scheduling
-
-The optimal checkpoint interval for job *i* is:
-
-```
-Δt*_i = sqrt(2 · C_i / (λ_e · B_eff_i))
-```
-
-Bandwidth allocation uses cube-root proportional sharing with iterative water-filling to respect per-job write caps:
-
-```
-b_i = B_ckpt · (λ_i · C_i)^(1/3) / Σ_j (λ_j · C_j)^(1/3)
-```
-
-## P2: Destination Selection
-
-Infeasibility check: `C/B + T_r > τ` → skip candidate.
-
-Composite cost: `α · T_transfer + β · (1 − exp(−λ_d · H)) + γ · dist(level)`
-
-## P3: Traffic Control
-
-- Reserves `migration_share × link_capacity` for migration traffic.
-- eBPF TC program enforces per-flow token-bucket rate limits.
-- XDP kill-switch drops all incoming packets during emergency reclaim.
 
 ## License
 
