@@ -1,6 +1,3 @@
-find_package(Protobuf REQUIRED)
-find_package(gRPC CONFIG REQUIRED)
-
 set(PROTO_FILE "${CMAKE_CURRENT_SOURCE_DIR}/reclaimnet.proto")
 
 get_filename_component(PROTO_PATH "${PROTO_FILE}" PATH)
@@ -11,18 +8,23 @@ set(PROTO_HDRS "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_BASENAME}.pb.h")
 set(GRPC_SRCS  "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_BASENAME}.grpc.pb.cc")
 set(GRPC_HDRS  "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_BASENAME}.grpc.pb.h")
 
-get_target_property(GRPC_CPP_PLUGIN gRPC::grpc_cpp_plugin LOCATION)
+set(PROTO_OPTIONAL_FLAG)
+if(Protobuf_VERSION VERSION_LESS "3.15")
+  list(APPEND PROTO_OPTIONAL_FLAG --experimental_allow_proto3_optional)
+endif()
 
 add_custom_command(
   OUTPUT "${PROTO_SRCS}" "${PROTO_HDRS}" "${GRPC_SRCS}" "${GRPC_HDRS}"
-  COMMAND protobuf::protoc
+  COMMAND $<TARGET_FILE:protobuf::protoc>
   ARGS
+    ${PROTO_OPTIONAL_FLAG}
     --grpc_out "${CMAKE_CURRENT_BINARY_DIR}"
     --cpp_out  "${CMAKE_CURRENT_BINARY_DIR}"
     -I "${PROTO_PATH}"
-    --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}"
+    --plugin=protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_cpp_plugin>
     "${PROTO_FILE}"
-  DEPENDS "${PROTO_FILE}"
+  DEPENDS "${PROTO_FILE}" protobuf::protoc gRPC::grpc_cpp_plugin
+  VERBATIM
   COMMENT "Generating protobuf/gRPC sources from ${PROTO_FILE}"
 )
 

@@ -1,5 +1,5 @@
-// FindLibbpf.cmake - Find libbpf library and headers
-// Defines: LIBBPF_FOUND, LIBBPF_INCLUDE_DIRS, LIBBPF_LIBRARIES, libbpf::libbpf target
+
+
 
 find_path(LIBBPF_INCLUDE_DIR bpf/libbpf.h
   HINTS /usr/include /usr/local/include /opt/homebrew/include)
@@ -10,7 +10,7 @@ find_library(LIBBPF_LIBRARY NAMES bpf
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Libbpf DEFAULT_MSG LIBBPF_LIBRARY LIBBPF_INCLUDE_DIR)
 
-if(LIBBPF_FOUND AND NOT TARGET libbpf::libbpf)
+if(Libbpf_FOUND AND NOT TARGET libbpf::libbpf)
   add_library(libbpf::libbpf UNKNOWN IMPORTED)
   set_target_properties(libbpf::libbpf PROPERTIES
     IMPORTED_LOCATION "${LIBBPF_LIBRARY}"

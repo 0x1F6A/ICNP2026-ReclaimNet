@@ -6,3 +6,5 @@ cmake-build-*/
 *.so
 *.dylib
 *.dSYM/
+__pycache__/
+*.py[cod]

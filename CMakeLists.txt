@@ -1,67 +1,52 @@
 cmake_minimum_required(VERSION 3.20)
 project(ReclaimNet VERSION 0.1.0 LANGUAGES CXX C)
-
-
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-
-
 include(ReclaimNetUtils)
-
-
-
-find_package(Protobuf QUIET)
-find_package(gRPC     QUIET)
-if(Protobuf_FOUND AND gRPC_FOUND)
-  add_subdirectory(proto)
-  message(STATUS "ReclaimNet: protobuf + gRPC found – building proto library")
-else()
-  message(STATUS "ReclaimNet: protobuf/gRPC not found – skipping proto codegen")
-
-  add_library(reclaimnet_proto INTERFACE)
+option(RECLAIMNET_ENABLE_GRPC "Build gRPC TLS 1.3 transport" ON)
+option(RECLAIMNET_ENABLE_SQLITE "Build SQLite persistence when available" ON)
+option(RECLAIMNET_ENABLE_YAML "Read YAML configuration when available" ON)
+option(RECLAIMNET_ENABLE_JSON "Read JSON topology and trace files when available" ON)
+option(RECLAIMNET_BUILD_TESTS "Build unit and integration tests" ON)
+set(RECLAIMNET_WITH_GRPC OFF)
+if(RECLAIMNET_ENABLE_GRPC)
+  find_package(Protobuf CONFIG QUIET)
+  if(NOT Protobuf_FOUND)
+    find_package(Protobuf REQUIRED)
+  endif()
+  find_package(gRPC 1.84 CONFIG REQUIRED)
+  set(RECLAIMNET_WITH_GRPC ON)
 endif()
-
-
-
+if(RECLAIMNET_WITH_GRPC)
+  add_subdirectory(proto)
+else()
+  add_library(reclaimnet_proto INTERFACE)
+  message(STATUS "ReclaimNet: gRPC transport disabled")
+endif()
+if(RECLAIMNET_ENABLE_SQLITE)
+  find_package(SQLite3 QUIET)
+endif()
+if(RECLAIMNET_ENABLE_YAML)
+  find_package(yaml-cpp CONFIG QUIET)
+endif()
+if(RECLAIMNET_ENABLE_JSON)
+  find_package(nlohmann_json CONFIG QUIET)
+endif()
+find_package(Python3 COMPONENTS Interpreter Development QUIET)
+find_package(pybind11 CONFIG QUIET)
 add_subdirectory(common)
-
-
-
 add_subdirectory(control_plane)
-
-
-
 add_subdirectory(node_agent)
-
-
-
-option(RECLAIMNET_BUILD_TESTS "Build unit tests" ON)
 if(RECLAIMNET_BUILD_TESTS)
+  enable_testing()
   add_subdirectory(tests)
 endif()
-
-
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  find_package(Libbpf QUIET)
-  if(Libbpf_FOUND OR libbpf_FOUND)
-    message(STATUS "ReclaimNet: libbpf found – eBPF data plane enabled")
-  else()
-    message(STATUS "ReclaimNet: libbpf NOT found – use 'make -C data_plane' separately")
-  endif()
-else()
-  message(STATUS "ReclaimNet: non-Linux build – eBPF data plane skipped")
-endif()
-
-
-
-install(TARGETS coordinator node_agent
-  RUNTIME DESTINATION bin
-)
+install(TARGETS coordinator node_agent RUNTIME DESTINATION bin)
 install(DIRECTORY configs/ DESTINATION etc/reclaimnet)
+
+install(DIRECTORY node_agent/python/ DESTINATION share/reclaimnet/python FILES_MATCHING PATTERN "*.py")
+install(FILES docker/seccomp.json DESTINATION share/reclaimnet)
