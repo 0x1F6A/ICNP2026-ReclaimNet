@@ -1,126 +1,149 @@
-
-
-
 #include "reclaimnet/p1_allocator.h"
 #include "reclaimnet/log.h"
 
-#include <cmath>
 #include <algorithm>
-#include <numeric>
-#include <stdexcept>
+#include <cmath>
+#include <limits>
 
 namespace reclaimnet {
 namespace control {
+namespace {
 
-
-
-P1Allocator::P1Allocator(double B_ckpt_bps)
-  : B_ckpt_bps_(B_ckpt_bps) {}
-
-
-
-
-double P1Allocator::optimal_interval_s(double lambda_e, double C, double B_eff) noexcept {
-  if (lambda_e <= 0.0 || B_eff <= 0.0 || C <= 0.0) return 300.0;
-  return std::sqrt(2.0 * C / (lambda_e * B_eff));
+bool valid_input(const P1JobInput &job) {
+  return std::isfinite(job.lambda_i) && job.lambda_i >= 0.0 &&
+         job.checkpoint_size_b > 0 && std::isfinite(job.write_cap_bps) &&
+         job.write_cap_bps >= 0.0 && std::isfinite(job.checkpoint_beta) &&
+         job.checkpoint_beta > 0.0 && job.checkpoint_beta <= 1.0 &&
+         std::isfinite(job.loss_budget_s) && job.loss_budget_s > 0.0 &&
+         job.loss_budget_s <= std::numeric_limits<double>::max() / 2.0;
 }
 
+}
 
+P1Allocator::P1Allocator(double B_ckpt_bps) : B_ckpt_bps_(B_ckpt_bps) {}
 
+double P1Allocator::optimal_interval_s(double lambda_e, double C,
+                                       double B_eff) noexcept {
+  if (!std::isfinite(lambda_e) || !std::isfinite(C) || !std::isfinite(B_eff) ||
+      lambda_e < 0.0 || C < 0.0 || B_eff < 0.0)
+    return std::numeric_limits<double>::quiet_NaN();
+  if (C == 0.0)
+    return 0.0;
+  if (lambda_e == 0.0 || B_eff == 0.0)
+    return std::numeric_limits<double>::infinity();
 
-std::vector<double> P1Allocator::proportional_alloc(
-    const std::vector<P1JobInput>& jobs) const {
-  std::vector<double> weights(jobs.size(), 0.0);
-  double denom = 0.0;
+  return static_cast<double>(
+      std::sqrt(16.0L * C / (lambda_e * static_cast<long double>(B_eff))));
+}
+
+std::vector<double> P1Allocator::water_fill(const std::vector<P1JobInput> &jobs,
+                                            int *iters_out) const {
+  std::vector<double> allocation(jobs.size(), 0.0);
+  std::vector<bool> fixed(jobs.size(), false);
+  std::vector<long double> weights(jobs.size(), 0.0L);
   for (size_t i = 0; i < jobs.size(); ++i) {
-    double w = std::cbrt(jobs[i].lambda_i * static_cast<double>(jobs[i].checkpoint_size_b));
-    if (!std::isfinite(w) || w < 0.0) w = 0.0;
-    weights[i] = w;
-    denom += w;
+    fixed[i] = !valid_input(jobs[i]);
+    if (!fixed[i]) {
+      weights[i] = std::cbrt(static_cast<long double>(jobs[i].lambda_i) *
+                             jobs[i].checkpoint_size_b);
+    }
   }
-  std::vector<double> alloc(jobs.size(), 0.0);
-  if (denom < 1e-15) {
 
-    double share = B_ckpt_bps_ / (double)jobs.size();
-    std::fill(alloc.begin(), alloc.end(), share);
-  } else {
-    for (size_t i = 0; i < jobs.size(); ++i)
-      alloc[i] = B_ckpt_bps_ * weights[i] / denom;
+  long double remaining = B_ckpt_bps_;
+  int iterations = 0;
+
+  while (remaining > 0.0L) {
+    long double weight_sum = 0.0L;
+    size_t free_count = 0;
+    for (size_t i = 0; i < jobs.size(); ++i) {
+      if (!fixed[i]) {
+        weight_sum += weights[i];
+        ++free_count;
+      }
+    }
+    if (free_count == 0)
+      break;
+    ++iterations;
+    bool newly_capped = false;
+    const long double round_budget = remaining;
+    for (size_t i = 0; i < jobs.size(); ++i) {
+      if (fixed[i])
+        continue;
+      const long double share = weight_sum > 0.0L
+                                    ? round_budget * weights[i] / weight_sum
+                                    : round_budget / free_count;
+      if (jobs[i].write_cap_bps > 0.0 && share > jobs[i].write_cap_bps) {
+        allocation[i] = jobs[i].write_cap_bps;
+        remaining -= jobs[i].write_cap_bps;
+        fixed[i] = true;
+        newly_capped = true;
+      }
+    }
+    if (newly_capped)
+      continue;
+    for (size_t i = 0; i < jobs.size(); ++i) {
+      if (!fixed[i]) {
+        allocation[i] = static_cast<double>(
+            weight_sum > 0.0L ? remaining * weights[i] / weight_sum
+                              : remaining / free_count);
+      }
+    }
+    break;
   }
-  return alloc;
+  if (iters_out)
+    *iters_out = iterations;
+  return allocation;
 }
 
+P1EpochResult P1Allocator::compute(const std::vector<P1JobInput> &jobs) const {
+  P1EpochResult result;
+  if (jobs.empty())
+    return result;
 
+  const bool valid_budget = std::isfinite(B_ckpt_bps_) && B_ckpt_bps_ > 0.0;
+  std::vector<double> allocation(jobs.size(), 0.0);
+  if (valid_budget)
+    allocation = water_fill(jobs, &result.water_fill_iters);
 
-std::vector<double> P1Allocator::water_fill(
-    const std::vector<P1JobInput>& jobs,
-    std::vector<double> alloc,
-    int* iters_out) const {
-  const int MAX_ITERS = 64;
-  int iter = 0;
-  double budget = B_ckpt_bps_;
-
-  for (; iter < MAX_ITERS; ++iter) {
-
-    std::vector<bool> capped(jobs.size(), false);
-    double capped_sum = 0.0;
-    bool any_new_cap = false;
-
-    for (size_t i = 0; i < jobs.size(); ++i) {
-      if (jobs[i].write_cap_bps > 0.0 && alloc[i] > jobs[i].write_cap_bps) {
-        if (!capped[i]) any_new_cap = true;
-        capped[i]   = true;
-        alloc[i]    = jobs[i].write_cap_bps;
-        capped_sum += jobs[i].write_cap_bps;
-      }
-    }
-    if (!any_new_cap) break;
-
-
-    double surplus    = budget - capped_sum;
-    double free_denom = 0.0;
-    for (size_t i = 0; i < jobs.size(); ++i) {
-      if (!capped[i]) {
-        free_denom += std::cbrt(jobs[i].lambda_i *
-                                 static_cast<double>(jobs[i].checkpoint_size_b));
-      }
-    }
-    if (free_denom < 1e-15) break;
-    for (size_t i = 0; i < jobs.size(); ++i) {
-      if (!capped[i]) {
-        double w  = std::cbrt(jobs[i].lambda_i *
-                               static_cast<double>(jobs[i].checkpoint_size_b));
-        alloc[i]  = surplus * w / free_denom;
-      }
-    }
-    budget = surplus + capped_sum;
-  }
-  if (iters_out) *iters_out = iter;
-  return alloc;
-}
-
-
-
-P1EpochResult P1Allocator::compute(const std::vector<P1JobInput>& jobs) const {
-  if (jobs.empty()) return {{}, 0.0, 0};
-
-  auto alloc = proportional_alloc(jobs);
-  int iters  = 0;
-  alloc      = water_fill(jobs, std::move(alloc), &iters);
-
-  double total = 0.0;
-  std::vector<P1Schedule> schedules;
-  schedules.reserve(jobs.size());
+  result.schedules.reserve(jobs.size());
   for (size_t i = 0; i < jobs.size(); ++i) {
-    double b_i   = alloc[i];
-    double dt    = optimal_interval_s(jobs[i].lambda_i,
-                                       static_cast<double>(jobs[i].checkpoint_size_b), b_i);
-    schedules.push_back({jobs[i].job_id, dt, b_i});
-    total += b_i;
-    LOG_DEBUG("P1: job=%s Δt*=%.1fs b_i=%.0fbps",
-              jobs[i].job_id.c_str(), dt, b_i);
+    const auto &job = jobs[i];
+    P1Schedule schedule;
+    schedule.job_id = job.job_id;
+    schedule.b_i_bps = allocation[i];
+    result.total_bps_used += schedule.b_i_bps;
+    if (!valid_input(job)) {
+      schedule.reason =
+          "Invalid checkpoint size, hazard, cap, beta or loss budget";
+    } else {
+      schedule.upper_bound_s = 2.0 * job.loss_budget_s;
+      schedule.raw_delta_t_s = optimal_interval_s(
+          job.lambda_i, static_cast<double>(job.checkpoint_size_b),
+          schedule.b_i_bps);
+      schedule.write_rate_limit_bps = job.checkpoint_beta * schedule.b_i_bps;
+      schedule.lower_bound_s =
+          schedule.write_rate_limit_bps > 0.0
+              ? 8.0 * static_cast<double>(job.checkpoint_size_b) /
+                    schedule.write_rate_limit_bps
+              : std::numeric_limits<double>::infinity();
+      if (!valid_budget || schedule.b_i_bps <= 0.0) {
+        schedule.reason = "No checkpoint bandwidth available";
+      } else if (schedule.lower_bound_s > schedule.upper_bound_s) {
+        schedule.reason = "Checkpoint duration exceeds the loss-budget bound";
+      } else {
+        schedule.delta_t_s =
+            std::clamp(schedule.raw_delta_t_s, schedule.lower_bound_s,
+                       schedule.upper_bound_s);
+        schedule.feasible = true;
+      }
+    }
+    LOG_DEBUG(
+        "P1: job=%s interval=%.3fs slice=%.0fbps write=%.0fbps feasible=%d",
+        job.job_id.c_str(), schedule.delta_t_s, schedule.b_i_bps,
+        schedule.write_rate_limit_bps, static_cast<int>(schedule.feasible));
+    result.schedules.push_back(std::move(schedule));
   }
-  return {schedules, total, iters};
+  return result;
 }
 
 }
