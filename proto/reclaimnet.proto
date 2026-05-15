@@ -1,169 +1,442 @@
 syntax = "proto3";
-package reclaimnet;
+package reclaimnet.proto;
 option cc_generic_services = false;
 
-
-
 message FiveTuple {
-  fixed32 src_ip   = 1;
-  fixed32 dst_ip   = 2;
-  uint32  src_port = 3;
-  uint32  dst_port = 4;
-  uint32  protocol = 5;
+  fixed32 src_ip = 1;
+  fixed32 dst_ip = 2;
+  uint32 src_port = 3;
+  uint32 dst_port = 4;
+  uint32 protocol = 5;
 }
 
 message BandwidthSample {
-  string node_id   = 1;
-  uint64 bps       = 2;
-  int64  timestamp = 3;
+  string node_id = 1;
+  uint64 bps = 2;
+  int64 timestamp = 3;
+  string src_node_id = 4;
+  string dst_node_id = 5;
 }
 
 message HazardSample {
-  string node_id     = 1;
-  double lambda_e    = 2;
-  int64  timestamp   = 3;
+  string node_id = 1;
+  double lambda_e = 2;
+  int64 timestamp = 3;
 }
 
 message JobSpec {
-  string job_id          = 1;
-  string node_id         = 2;
-  uint64 vram_bytes      = 3;
+  string job_id = 1;
+  string node_id = 2;
+  uint64 vram_bytes = 3;
   uint64 checkpoint_size = 4;
-  double lambda_e        = 5;
-  uint64 write_cap_bps   = 6;
+  double lambda_e = 5;
+  uint64 write_cap_bps = 6;
 }
 
 message CheckpointInfo {
-  string job_id          = 1;
-  string node_id         = 2;
-  uint64 sequence        = 3;
-  uint64 size_bytes      = 4;
-  int64  completed_at    = 5;
-  uint64 duration_ns     = 6;
+  string job_id = 1;
+  string node_id = 2;
+  uint64 sequence = 3;
+  uint64 size_bytes = 4;
+  int64 completed_at = 5;
+  uint64 duration_ns = 6;
+  string checkpoint_id = 7;
+  string replica_node_id = 8;
+  string path = 9;
+  string checksum_sha256 = 10;
+  repeated string source_node_ids = 11;
+  uint32 rank = 12;
+  uint32 gang_size = 13;
+  bool restored = 14;
+  string migration_id = 15;
 }
 
 message MigrationRequest {
-  string   job_id        = 1;
-  string   src_node_id   = 2;
-  double   tau_seconds   = 3;
-  uint64   checkpoint_size = 4;
-  double   lambda_e_src  = 5;
+  string job_id = 1;
+  string src_node_id = 2;
+  double tau_seconds = 3;
+  uint64 checkpoint_size = 4;
+  double lambda_e_src = 5;
+  int64 event_timestamp_ns = 6;
 }
 
 message MigrationDecision {
-  string    job_id           = 1;
-  string    dst_node_id      = 2;
-  double    topology_cost    = 3;
-  double    survival_prob    = 4;
-  double    transfer_time    = 5;
-  uint64    allocated_bps    = 6;
-  FiveTuple flow_key         = 7;
-  bool      feasible         = 8;
-  string    reject_reason    = 9;
+  string job_id = 1;
+  string dst_node_id = 2;
+  double topology_cost = 3;
+  double survival_prob = 4;
+  double transfer_time = 5;
+
+  uint64 allocated_bps = 6;
+  FiveTuple flow_key = 7;
+  bool feasible = 8;
+  string reject_reason = 9;
+  int64 deadline_ns = 10;
+  double deadline_s = 11;
+  double exact_allocated_bps = 12;
 }
 
 message CheckpointInterval {
-  string job_id            = 1;
-  uint64 interval_ns       = 2;
-  uint64 allocated_bps     = 3;
+  string job_id = 1;
+  uint64 interval_ns = 2;
+  uint64 allocated_bps = 3;
+  uint64 write_rate_limit_bps = 4;
+  bool feasible = 5;
+  string replica_node_id = 6;
+  string replica_address = 7;
+  uint32 replica_port = 8;
+  int64 eligible_start_ns = 9;
+  string checkpoint_id = 10;
+  double exact_write_rate_limit_bps = 11;
+  double exact_allocated_bps = 12;
+  uint32 rank = 13;
+  uint32 gang_size = 14;
+  uint32 checkpoint_sequence = 15;
+  int64 deadline_ns = 16;
+  uint64 allocation_version = 17;
 }
 
 message KillSwitchCommand {
   FiveTuple flow_key = 1;
-  bool      activate = 2;
+  bool activate = 2;
+  bool allow_existing = 3;
+  int64 grace_deadline_ns = 4;
 }
 
 message RateLimit {
-  FiveTuple flow_key   = 1;
-  uint64    rate_bps   = 2;
-  uint64    burst_bytes= 3;
+  FiveTuple flow_key = 1;
+  uint64 rate_bps = 2;
+  uint64 burst_bytes = 3;
 }
 
 message TelemetryReport {
-  string                node_id          = 1;
-  repeated BandwidthSample bw_samples    = 2;
-  repeated HazardSample    hazard_samples= 3;
-  repeated CheckpointInfo  checkpoints   = 4;
-  int64                  timestamp       = 5;
+  string node_id = 1;
+  repeated BandwidthSample bw_samples = 2;
+  repeated HazardSample hazard_samples = 3;
+  repeated CheckpointInfo checkpoints = 4;
+  int64 timestamp = 5;
+  repeated string flow_records_json = 6;
 }
 
 message ReclaimEvent {
-  string node_id      = 1;
-  string job_id       = 2;
-  double tau_seconds  = 3;
-  int64  timestamp    = 4;
-  string type         = 5;
+  string node_id = 1;
+  string job_id = 2;
+  double tau_seconds = 3;
+  int64 timestamp = 4;
+  string type = 5;
 }
 
 message RegisterRequest {
-  string node_id       = 1;
-  string address       = 2;
-  uint64 total_vram    = 3;
+  string node_id = 1;
+  string address = 2;
+  uint64 total_vram = 3;
   uint64 link_capacity = 4;
-  string building      = 5;
-  string switch_id     = 6;
+  string building = 5;
+  string switch_id = 6;
 }
 
 message RegisterResponse {
-  bool   accepted  = 1;
-  string message   = 2;
+  bool accepted = 1;
+  string message = 2;
 }
 
 message HeartbeatRequest {
-  string node_id     = 1;
-  uint64 free_vram   = 2;
+  string node_id = 1;
+  uint64 free_vram = 2;
   uint64 active_jobs = 3;
-  int64  timestamp   = 4;
+  int64 timestamp = 4;
+  NodeTelemetry telemetry = 5;
 }
 
 message HeartbeatResponse {
-  bool   ok      = 1;
-  int64  server_ts = 2;
+  bool ok = 1;
+  int64 server_ts = 2;
+  int64 server_time_ns = 3;
+  repeated CheckpointInterval checkpoint_intervals = 4;
+  repeated RateUpdate rate_updates = 5;
+  repeated RecoveryPlan recoveries = 6;
+  string refreshed_token = 7;
+  repeated ResumeJob start_jobs = 8;
+  repeated ResumeJob stop_jobs = 9;
 }
+
+message NodeTelemetry {
+  double gpu_util_pct = 1;
+  double vram_used_pct = 2;
+  uint64 vram_free_bytes = 3;
+  double link_tx_bps = 4;
+  double link_rx_bps = 5;
+  double cpu_load_1m = 6;
+  int64 sampled_ns = 7;
+  uint32 gpu_free_count = 8;
+  double cuda_capability = 9;
+}
+
+message RegisterNodeRequest {
+  string node_id = 1;
+  string address = 2;
+  uint64 total_vram_bytes = 3;
+  uint64 link_capacity_bps = 4;
+  string building = 5;
+  string switch_id = 6;
+  uint32 gpu_count = 7;
+  double cuda_capability = 8;
+  uint32 migration_port = 9;
+}
+
+message RegisterNodeResponse {
+  bool success = 1;
+  string error_message = 2;
+  string access_token = 3;
+  string jwt_public_key = 4;
+}
+
+message RegisterJobRequest {
+  string job_id = 1;
+  string node_id = 2;
+  uint64 vram_bytes = 3;
+  uint64 checkpoint_size_bytes = 4;
+  string user = 5;
+  string workload_tag = 6;
+  double write_cap_bps = 7;
+  oneof loss_budget { double loss_budget_s = 8; }
+  double lambda_e = 9;
+  double cuda_capability_required = 10;
+  uint32 gpu_count_required = 11;
+  double remaining_runtime_s = 12;
+  repeated string rank_nodes = 13;
+  uint32 rank_count = 14;
+  RuntimeSpec runtime = 15;
+}
+
+message RegisterJobResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+enum ReclaimType {
+  RECLAIM_SCHEDULED = 0;
+  RECLAIM_EMERGENCY = 1;
+}
+
+message ReclaimSignalRequest {
+  string node_id = 1;
+  string job_id = 2;
+  double deadline_s = 3;
+  ReclaimType reclaim_type = 4;
+  int64 event_timestamp_ns = 5;
+}
+
+message ReclaimSignalResponse {
+  bool success = 1;
+  string error_message = 2;
+  string dst_node_id = 3;
+  double allocated_bps = 4;
+  double deadline_s = 5;
+  int64 deadline_ns = 6;
+  string destination_address = 7;
+  uint32 destination_port = 8;
+  string migration_id = 9;
+  int64 eligible_start_ns = 10;
+  bool recovery = 11;
+  repeated RecoveryPlan recoveries = 12;
+  repeated RankMigration ranks = 13;
+}
+
+message MigrationProgressRequest {
+  string job_id = 1;
+  uint64 bytes_transferred = 2;
+  bool completed = 3;
+  string migration_id = 4;
+  uint32 rank = 5;
+  bool failed = 6;
+  int64 timestamp_ns = 7;
+}
+
+message MigrationProgressResponse { bool acknowledged = 1; }
+
+message GetTopologyRequest {}
+
+message GetTopologyResponse { uint64 node_count = 1; }
 
 message AdmissionResult {
-  bool   admitted     = 1;
-  string reason       = 2;
-  uint64 rate_bps     = 3;
-  uint64 burst_bytes  = 4;
+  bool admitted = 1;
+  string reason = 2;
+  uint64 rate_bps = 3;
+  uint64 burst_bytes = 4;
 }
 
-message PrometheusSnapshot {
-  string metrics_text = 1;
-}
+message PrometheusSnapshot { string metrics_text = 1; }
 
 message HealthStatus {
-  bool   healthy  = 1;
-  string version  = 2;
-  int64  uptime_s = 3;
+  bool healthy = 1;
+  string version = 2;
+  int64 uptime_s = 3;
 }
 
 message Empty {}
 
-
-
 service CoordinatorService {
+  rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse);
+  rpc RegisterJob(RegisterJobRequest) returns (RegisterJobResponse);
+  rpc ReclaimSignal(ReclaimSignalRequest) returns (ReclaimSignalResponse);
+  rpc MigrationProgress(MigrationProgressRequest)
+      returns (MigrationProgressResponse);
+  rpc GetTopology(GetTopologyRequest) returns (GetTopologyResponse);
+  rpc BeginCheckpoint(CheckpointRequest) returns (CheckpointInterval);
+  rpc CommitCheckpoint(CheckpointInfo) returns (Empty);
+  rpc RecoveryComplete(RecoveryResult) returns (Empty);
+  rpc MigrationBatch(BatchMigrationRequest) returns (BatchMigrationResponse);
+  rpc SourceStopped(SourceStopResult) returns (Empty);
+  rpc PrepareFinalCheckpoint(FinalCheckpointRequest) returns (RateUpdate);
 
-  rpc Register         (RegisterRequest)    returns (RegisterResponse);
-  rpc Heartbeat        (HeartbeatRequest)   returns (HeartbeatResponse);
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 
+  rpc ReportTelemetry(TelemetryReport) returns (Empty);
 
-  rpc ReportTelemetry  (TelemetryReport)    returns (Empty);
-  rpc ReportReclaim    (ReclaimEvent)       returns (Empty);
+  rpc ReportReclaim(ReclaimEvent) returns (Empty);
 
+  rpc RequestMigration(MigrationRequest) returns (MigrationDecision);
+  rpc UpdateRateBudget(RateLimit) returns (AdmissionResult);
 
-  rpc RequestMigration (MigrationRequest)   returns (MigrationDecision);
-  rpc UpdateRateBudget (RateLimit)          returns (AdmissionResult);
-
-
-  rpc GetPrometheusSnapshot (Empty)         returns (PrometheusSnapshot);
+  rpc GetPrometheusSnapshot(Empty) returns (PrometheusSnapshot);
 }
 
-
-
 service NodeAgentService {
-  rpc ApplyCheckpointInterval  (CheckpointInterval)  returns (Empty);
-  rpc ApplyMigrationDecision   (MigrationDecision)   returns (Empty);
-  rpc ApplyKillSwitch          (KillSwitchCommand)   returns (Empty);
-  rpc HealthCheck              (Empty)               returns (HealthStatus);
+  rpc ApplyCheckpointInterval(CheckpointInterval) returns (Empty);
+  rpc ApplyMigrationDecision(MigrationDecision) returns (Empty);
+  rpc ApplyKillSwitch(KillSwitchCommand) returns (Empty);
+  rpc HealthCheck(Empty) returns (HealthStatus);
+  rpc RegisterRuntime(RuntimeRegistration) returns (Empty);
+  rpc PrepareMigration(MigrationPreparation) returns (Empty);
+  rpc RestoreCheckpoint(RecoveryPlan) returns (Empty);
+  rpc Reclaim(ReclaimEvent) returns (Empty);
+  rpc ExecuteMigration(MigrationExecution) returns (Empty);
+}
+
+message RuntimeSpec {
+  string job_id = 1;
+  string state_path = 2;
+  string backend = 3;
+  string application_module = 4;
+  string bridge_directory = 5;
+  string container_name = 6;
+  string container_image = 7;
+  string gpu_devices = 8;
+  uint64 memory_limit_bytes = 9;
+  bool state_directory = 10;
+  repeated string container_args = 11;
+  repeated string checkpoint_command = 12;
+  repeated string restore_command = 13;
+  repeated string start_command = 14;
+  repeated string pause_command = 15;
+  repeated string resume_command = 16;
+  repeated string stop_command = 17;
+  string seccomp_profile = 18;
+  bool defer_start = 19;
+}
+message RuntimeRegistration {
+  RuntimeSpec runtime = 1;
+  JobSpec job = 2;
+  double loss_budget_s = 3;
+  double cuda_capability_required = 4;
+  uint32 gpu_count_required = 5;
+  double remaining_runtime_s = 6;
+  repeated string rank_nodes = 7;
+  uint32 rank_count = 8;
+  uint32 rank = 9;
+}
+message FinalCheckpointRequest {
+  string node_id = 1;
+  string job_id = 2;
+  string migration_id = 3;
+  uint32 rank = 4;
+  uint64 size_bytes = 5;
+  int64 timestamp_ns = 6;
+}
+message RateUpdate {
+  string job_id = 1;
+  string migration_id = 2;
+  uint32 rank = 3;
+  double allocated_bps = 4;
+  int64 eligible_start_ns = 5;
+  int64 deadline_ns = 6;
+  uint64 allocation_version = 7;
+}
+message RecoveryPlan {
+  string job_id = 1;
+  string checkpoint_id = 2;
+  string replica_node_id = 3;
+  string replica_address = 4;
+  string path = 5;
+  string checksum_sha256 = 6;
+  uint64 size_bytes = 7;
+  uint32 sequence = 8;
+  uint32 rank = 9;
+  uint32 gang_size = 10;
+  RuntimeSpec runtime = 11;
+  uint64 vram_bytes = 12;
+  uint32 gpu_count_required = 13;
+  double cuda_capability_required = 14;
+}
+message RecoveryResult {
+  string node_id = 1;
+  string job_id = 2;
+  string checkpoint_id = 3;
+  uint32 rank = 4;
+  bool restored = 5;
+  int64 completed_ns = 6;
+}
+message CheckpointRequest {
+  string node_id = 1;
+  string job_id = 2;
+  uint64 checkpoint_size_bytes = 3;
+  int64 timestamp_ns = 4;
+  uint32 rank = 5;
+}
+message MigrationPreparation {
+  string source_node_id = 1;
+  RuntimeSpec runtime = 2;
+  string migration_id = 3;
+  uint32 rank = 4;
+  uint32 gang_size = 5;
+  bool restore_after_transfer = 6;
+  uint64 vram_bytes = 7;
+  uint32 gpu_count_required = 8;
+  double cuda_capability_required = 9;
+}
+message RankMigration {
+  uint32 rank = 1;
+  string source_node_id = 2;
+  string destination_node_id = 3;
+  string destination_address = 4;
+  uint32 destination_port = 5;
+  double allocated_bps = 6;
+  int64 eligible_start_ns = 7;
+  int64 deadline_ns = 8;
+  string source_address = 9;
+  double restore_time_s = 10;
+  uint32 checkpoint_sequence = 11;
+  uint64 allocation_version = 12;
+}
+message BatchMigrationRequest { repeated ReclaimSignalRequest requests = 1; }
+message BatchMigrationResponse { repeated ReclaimSignalResponse decisions = 1; }
+message MigrationExecution {
+  string job_id = 1;
+  string migration_id = 2;
+  RankMigration rank = 3;
+  double notice_s = 4;
+}
+
+message ResumeJob {
+  string job_id = 1;
+  string barrier_id = 2;
+}
+
+message SourceStopResult {
+  string node_id = 1;
+  string job_id = 2;
+  string barrier_id = 3;
+  int64 completed_ns = 4;
 }
