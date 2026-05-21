@@ -1,157 +1,279 @@
-
-
-
 #include "reclaimnet/checkpoint_manager.h"
-#include "reclaimnet/log.h"
+#include "reclaimnet/security.h"
 #include "reclaimnet/time.h"
-
-#include <fstream>
-#include <sstream>
+#include <array>
+#include <fcntl.h>
 #include <filesystem>
-#include <cstring>
-
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <unistd.h>
+namespace reclaimnet::agent {
 namespace fs = std::filesystem;
-
-namespace reclaimnet {
-namespace agent {
-
-
-
-CheckpointManager::CheckpointManager(std::string checkpoint_dir)
-  : checkpoint_dir_(std::move(checkpoint_dir)) {
+namespace {
+bool valid_id(const std::string &id) {
+  return !id.empty() && id != "." && id != ".." &&
+         id.find_first_of("/\\\n\r") == std::string::npos;
+}
+VoidResult sync_directory(const std::string &directory) {
+  int fd = open(directory.c_str(), O_RDONLY);
+  if (fd < 0)
+    return Error{"Cannot open checkpoint directory"};
+  int result = fsync(fd);
+  close(fd);
+  return result == 0 ? ok_void() : err_void("Cannot sync checkpoint directory");
+}
+}
+VoidResult checkpoint_sync_file(const std::string &path) {
+  int fd = open(path.c_str(), O_RDONLY);
+  if (fd < 0)
+    return Error{"Cannot open checkpoint for sync: " + path};
+  int result = fsync(fd);
+  close(fd);
+  return result == 0 ? ok_void() : err_void("Cannot sync checkpoint: " + path);
+}
+Result<std::string> checkpoint_sha256(const std::string &path) {
+  return sha256_file(path);
+}
+CheckpointManager::CheckpointManager(std::string directory)
+    : checkpoint_dir_(std::move(directory)),
+      owned_runtime_(std::make_unique<RuntimeManager>()),
+      runtime_(owned_runtime_.get()) {
   fs::create_directories(checkpoint_dir_);
 }
-
-
-
-std::string CheckpointManager::meta_path(const JobId& id) const {
+CheckpointManager::CheckpointManager(std::string directory,
+                                     RuntimeManager &runtime)
+    : checkpoint_dir_(std::move(directory)), runtime_(&runtime) {
+  fs::create_directories(checkpoint_dir_);
+}
+std::string CheckpointManager::meta_path(const JobId &id) const {
   return checkpoint_dir_ + "/" + id + ".meta";
 }
-
-std::string CheckpointManager::data_path(const JobId& id, uint32_t seq) const {
+std::string CheckpointManager::data_path(const JobId &id, uint32_t seq) const {
   return checkpoint_dir_ + "/" + id + "." + std::to_string(seq) + ".ckpt";
 }
-
-
-
-bool CheckpointManager::exists(const JobId& id) const {
-  return fs::exists(meta_path(id));
+std::string CheckpointManager::incoming_path(const JobId &id,
+                                             uint32_t seq) const {
+  if (!valid_id(id))
+    return "";
+  return data_path(id, seq) + ".partial";
 }
-
-
-
-Result<CheckpointMeta> CheckpointManager::latest_meta(const JobId& id) const {
-  std::ifstream ifs(meta_path(id));
-  if (!ifs.is_open()) return Error{"No checkpoint for job " + id};
-
-  CheckpointMeta m{};
-  m.job_id = id;
+bool CheckpointManager::exists(const JobId &id) const {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  return valid_id(id) && fs::exists(meta_path(id));
+}
+Result<CheckpointMeta> CheckpointManager::latest_meta(const JobId &id) const {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if (!valid_id(id))
+    return Error{"Invalid checkpoint job id"};
+  std::ifstream input(meta_path(id));
+  if (!input)
+    return Error{"No committed checkpoint for job " + id};
+  CheckpointMeta meta;
+  meta.job_id = id;
   std::string line;
-  while (std::getline(ifs, line)) {
-    auto sep = line.find('=');
-    if (sep == std::string::npos) continue;
-    auto k = line.substr(0, sep);
-    auto v = line.substr(sep + 1);
-    if      (k == "seq")       m.sequence   = (uint32_t)std::stoul(v);
-    else if (k == "size")      m.size_bytes = (uint64_t)std::stoull(v);
-    else if (k == "ts_ns")     m.timestamp_ns = (int64_t)std::stoll(v);
-    else if (k == "path")      m.path        = v;
-    else if (k == "complete")  m.complete    = (v == "1");
+  try {
+    while (std::getline(input, line)) {
+      auto sep = line.find('=');
+      if (sep == std::string::npos)
+        continue;
+      auto key = line.substr(0, sep), value = line.substr(sep + 1);
+      if (key == "seq")
+        meta.sequence = std::stoul(value);
+      else if (key == "size")
+        meta.size_bytes = std::stoull(value);
+      else if (key == "ts_ns")
+        meta.timestamp_ns = std::stoll(value);
+      else if (key == "path")
+        meta.path = value;
+      else if (key == "complete")
+        meta.complete = value == "1";
+      else if (key == "sha256")
+        meta.sha256 = value;
+      else if (key == "restored")
+        meta.restored = value == "1";
+      else if (key == "transfer_id")
+        meta.transfer_id = value;
+      else if (key == "rank")
+        meta.rank = std::stoul(value);
+    }
+  } catch (const std::exception &error) {
+    return Error{error.what()};
   }
-  return m;
+  if (!meta.complete || meta.sha256.size() != 64 ||
+      meta.path != data_path(id, meta.sequence))
+    return Error{"Incomplete checkpoint metadata"};
+  return meta;
 }
-
-
-
-VoidResult CheckpointManager::take_checkpoint(
-    const JobId& job_id,
-    uint64_t vram_bytes,
-    const CheckpointCallbacks& cb) {
-
-
-  uint32_t seq = 0;
-  if (exists(job_id)) {
-    auto prev = latest_meta(job_id);
-    if (prev) seq = prev.value().sequence + 1;
-  }
-
-  std::string path = data_path(job_id, seq);
-  LOG_INFO("CheckpointManager: writing %s seq=%u size=%llu bytes",
-           job_id.c_str(), seq, (unsigned long long)vram_bytes);
-
-
+VoidResult CheckpointManager::write_meta(const CheckpointMeta &meta) {
+  const auto temporary = meta_path(meta.job_id) + ".tmp";
   {
-    std::ofstream ofs(path, std::ios::binary | std::ios::trunc);
-    if (!ofs.is_open()) return Error{"Cannot create checkpoint: " + path};
-
-
-    const size_t CHUNK = 65536;
-    std::vector<char> buf(CHUNK, 0xAB);
-    uint64_t written = 0;
-    while (written < vram_bytes) {
-      size_t n = std::min((uint64_t)CHUNK, vram_bytes - written);
-      ofs.write(buf.data(), (std::streamsize)n);
-      written += n;
-      if (cb.on_progress) cb.on_progress(job_id, written);
+    std::ofstream output(temporary, std::ios::trunc);
+    output << "seq=" << meta.sequence << "\nsize=" << meta.size_bytes
+           << "\nts_ns=" << meta.timestamp_ns << "\npath=" << meta.path
+           << "\ncomplete=" << meta.complete << "\nsha256=" << meta.sha256
+           << "\nrestored=" << meta.restored
+           << "\ntransfer_id=" << meta.transfer_id << "\nrank=" << meta.rank
+           << "\n";
+    output.flush();
+    if (!output)
+      return Error{"Checkpoint metadata write failed"};
+  }
+  if (auto result = checkpoint_sync_file(temporary); !result)
+    return result;
+  std::error_code error;
+  fs::rename(temporary, meta_path(meta.job_id), error);
+  if (error)
+    return Error{error.message()};
+  return sync_directory(checkpoint_dir_);
+}
+VoidResult CheckpointManager::take_checkpoint(const JobId &id, uint64_t,
+                                              const CheckpointCallbacks &cb,
+                                              bool final, int64_t deadline_ns) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if (!valid_id(id))
+    return Error{"Invalid checkpoint job id"};
+  uint32_t seq = 0;
+  if (exists(id)) {
+    auto previous = latest_meta(id);
+    if (!previous)
+      return previous.error();
+    seq = previous.value().sequence + 1;
+  }
+  auto temporary = data_path(id, seq) + ".capture";
+  if (auto result = runtime_->capture(id, temporary, final, deadline_ns);
+      !result)
+    return result;
+  auto hash = checkpoint_sha256(temporary);
+  if (!hash) {
+    if (final)
+      runtime_->resume(id);
+    return hash.error();
+  }
+  CheckpointMeta meta{id,           seq,  fs::file_size(temporary),
+                      now_ns(),     "",   true,
+                      hash.value(), false};
+  if (deadline_ns > 0 && now_ns() >= deadline_ns) {
+    if (final)
+      runtime_->resume(id);
+    return Error{"Checkpoint capture deadline exceeded"};
+  }
+  auto result = commit_received(meta, temporary);
+  if (!result) {
+    if (final)
+      runtime_->resume(id);
+    return result;
+  }
+  if (deadline_ns > 0 && now_ns() >= deadline_ns) {
+    if (final)
+      runtime_->resume(id);
+    return Error{"Checkpoint commit deadline exceeded"};
+  }
+  if (cb.on_progress)
+    cb.on_progress(id, meta.size_bytes);
+  if (cb.on_complete)
+    cb.on_complete(id, true);
+  return ok_void();
+}
+VoidResult CheckpointManager::commit_received(CheckpointMeta meta,
+                                              const std::string &incoming) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if (!valid_id(meta.job_id) || !meta.complete || meta.sha256.size() != 64)
+    return Error{"Invalid checkpoint commit metadata"};
+  if (exists(meta.job_id)) {
+    auto previous = latest_meta(meta.job_id);
+    if (!previous)
+      return previous.error();
+    if (meta.sequence < previous.value().sequence)
+      return Error{"An older checkpoint cannot replace the committed state"};
+    if (meta.sequence == previous.value().sequence) {
+      if (meta.sha256 != previous.value().sha256 ||
+          meta.size_bytes != previous.value().size_bytes)
+        return Error{"Checkpoint sequence identifies conflicting state"};
+      auto committed_hash = checkpoint_sha256(previous.value().path);
+      if (!committed_hash)
+        return committed_hash.error();
+      if (committed_hash.value() != meta.sha256 ||
+          fs::file_size(previous.value().path) != meta.size_bytes)
+        return Error{"Committed checkpoint integrity failed"};
+      return ok_void();
     }
   }
-
-
-  {
-    std::ofstream ofs(meta_path(job_id), std::ios::trunc);
-    ofs << "seq="      << seq       << "\n"
-        << "size="     << vram_bytes<< "\n"
-        << "ts_ns="    << now_ns()  << "\n"
-        << "path="     << path      << "\n"
-        << "complete=1\n";
+  std::error_code error;
+  if (fs::file_size(incoming, error) != meta.size_bytes || error)
+    return Error{"Checkpoint payload size differs from metadata"};
+  auto hash = checkpoint_sha256(incoming);
+  if (!hash)
+    return hash.error();
+  if (hash.value() != meta.sha256)
+    return Error{"Checkpoint checksum mismatch"};
+  if (auto result = checkpoint_sync_file(incoming); !result)
+    return result;
+  meta.path = data_path(meta.job_id, meta.sequence);
+  if (incoming != meta.path)
+    fs::rename(incoming, meta.path, error);
+  if (error)
+    return Error{"Checkpoint commit failed: " + error.message()};
+  if (auto result = sync_directory(checkpoint_dir_); !result)
+    return result;
+  return write_meta(meta);
+}
+VoidResult CheckpointManager::restore_checkpoint(const JobId &id,
+                                                 const CheckpointCallbacks &cb,
+                                                 int64_t deadline_ns) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  auto result = latest_meta(id);
+  if (!result)
+    return result.error();
+  auto meta = result.value();
+  auto hash = checkpoint_sha256(meta.path);
+  if (!hash)
+    return hash.error();
+  if (fs::file_size(meta.path) != meta.size_bytes ||
+      hash.value() != meta.sha256)
+    return Error{"Committed checkpoint integrity failed"};
+  auto restored = restored_.find(id);
+  if (restored == restored_.end() || restored->second.first != meta.sequence ||
+      restored->second.second != meta.sha256) {
+    if (auto restored = runtime_->restore(id, meta.path, deadline_ns);
+        !restored)
+      return restored;
+    meta.restored = true;
+    if (auto saved = write_meta(meta); !saved)
+      return saved;
+    restored_[id] = {meta.sequence, meta.sha256};
   }
-
-  LOG_INFO("CheckpointManager: checkpoint done for %s", job_id.c_str());
-  if (cb.on_complete) cb.on_complete(job_id, true);
+  if (deadline_ns > 0 && now_ns() >= deadline_ns)
+    return Error{"Checkpoint restore deadline exceeded"};
+  if (cb.on_progress)
+    cb.on_progress(id, meta.size_bytes);
+  if (cb.on_complete)
+    cb.on_complete(id, true);
   return ok_void();
 }
-
-
-
-VoidResult CheckpointManager::restore_checkpoint(
-    const JobId& job_id, const CheckpointCallbacks& cb) {
-
-  auto meta_res = latest_meta(job_id);
-  if (!meta_res) return meta_res.error();
-  const CheckpointMeta& meta = meta_res.value();
-
-  if (!meta.complete) return Error{"Checkpoint incomplete for " + job_id};
-  if (!fs::exists(meta.path)) return Error{"Checkpoint file missing: " + meta.path};
-
-
-  std::ifstream ifs(meta.path, std::ios::binary);
-  if (!ifs.is_open()) return Error{"Cannot open checkpoint: " + meta.path};
-
-  const size_t CHUNK = 65536;
-  std::vector<char> buf(CHUNK);
-  uint64_t read_bytes = 0;
-  while (ifs.read(buf.data(), CHUNK) || ifs.gcount() > 0) {
-    read_bytes += (uint64_t)ifs.gcount();
-    if (cb.on_progress) cb.on_progress(job_id, read_bytes);
+VoidResult CheckpointManager::purge(const JobId &id) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  auto meta = latest_meta(id);
+  if (!meta)
+    return meta.error();
+  const auto prefix = id + ".";
+  for (const auto &entry : fs::directory_iterator(checkpoint_dir_)) {
+    const auto name = entry.path().filename().string();
+    if (name.rfind(prefix, 0) != 0)
+      continue;
+    const auto end = name.find('.', prefix.size());
+    if (end == std::string::npos || end == prefix.size())
+      continue;
+    const auto sequence = name.substr(prefix.size(), end - prefix.size());
+    if (sequence.find_first_not_of("0123456789") != std::string::npos)
+      continue;
+    const auto suffix = name.substr(end);
+    if (suffix == ".ckpt" || suffix == ".ckpt.partial" ||
+        suffix == ".ckpt.partial.identity" || suffix == ".ckpt.capture")
+      fs::remove(entry.path());
   }
-
-  LOG_INFO("CheckpointManager: restored %s (%llu bytes)",
-           job_id.c_str(), (unsigned long long)read_bytes);
-  if (cb.on_complete) cb.on_complete(job_id, true);
-  return ok_void();
-}
-
-
-
-VoidResult CheckpointManager::purge(const JobId& job_id) {
-  auto meta_res = latest_meta(job_id);
-  if (meta_res) {
-    fs::remove(meta_res.value().path);
-  }
-  fs::remove(meta_path(job_id));
-  LOG_DEBUG("CheckpointManager: purged checkpoint for %s", job_id.c_str());
-  return ok_void();
-}
-
+  fs::remove(meta_path(id));
+  restored_.erase(id);
+  return sync_directory(checkpoint_dir_);
 }
 }
