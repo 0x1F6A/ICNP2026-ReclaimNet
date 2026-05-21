@@ -3,9 +3,9 @@
     {"src": "node-001", "dst": "node-002", "bandwidth_bps": 100e9, "latency_us": 2.0,  "level": "IntraRack"},
     {"src": "node-001", "dst": "node-003", "bandwidth_bps": 100e9, "latency_us": 2.0,  "level": "IntraRack"},
     {"src": "node-002", "dst": "node-003", "bandwidth_bps": 100e9, "latency_us": 2.0,  "level": "IntraRack"},
-    {"src": "node-001", "dst": "node-004", "bandwidth_bps": 40e9,  "latency_us": 10.0, "level": "InterRack"},
-    {"src": "node-002", "dst": "node-004", "bandwidth_bps": 40e9,  "latency_us": 10.0, "level": "InterRack"},
-    {"src": "node-003", "dst": "node-005", "bandwidth_bps": 40e9,  "latency_us": 10.0, "level": "InterRack"},
-    {"src": "node-004", "dst": "node-005", "bandwidth_bps": 40e9,  "latency_us": 10.0, "level": "InterRack"}
+    {"src": "node-001", "dst": "node-004", "bandwidth_bps": 40e9,  "latency_us": 10.0, "level": "CrossBuilding"},
+    {"src": "node-002", "dst": "node-004", "bandwidth_bps": 40e9,  "latency_us": 10.0, "level": "CrossBuilding"},
+    {"src": "node-003", "dst": "node-005", "bandwidth_bps": 40e9,  "latency_us": 10.0, "level": "CrossBuilding"},
+    {"src": "node-004", "dst": "node-005", "bandwidth_bps": 40e9,  "latency_us": 10.0, "level": "CrossBuilding"}
   ]
 }
