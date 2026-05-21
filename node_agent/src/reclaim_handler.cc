@@ -1,78 +1,94 @@
-
-
-
 #include "reclaimnet/reclaim_handler.h"
-#include "reclaimnet/log.h"
 #include "reclaimnet/time.h"
-
-#include <atomic>
-
-namespace reclaimnet {
-namespace agent {
-
-ReclaimHandler::ReclaimHandler(CheckpointManager& ckpt_mgr,
-                                MigrationClient&   mig_client,
-                                ReclaimSignalCb    signal_cb)
-  : ckpt_mgr_(ckpt_mgr),
-    mig_client_(mig_client),
-    signal_cb_(std::move(signal_cb)) {}
-
-VoidResult ReclaimHandler::handle(const ReclaimNotification& notif) {
-  LOG_INFO("ReclaimHandler: handling job=%s type=%d deadline=%.1fs",
-           notif.job_id.c_str(), (int)notif.type, notif.deadline_s);
-
-
-  CheckpointCallbacks cb;
-  cb.on_progress = [](const JobId& jid, uint64_t b) {
-    LOG_DEBUG("Checkpoint progress: job=%s bytes=%llu", jid.c_str(), (unsigned long long)b);
+namespace reclaimnet::agent {
+ReclaimHandler::ReclaimHandler(CheckpointManager &checkpoints,
+                               MigrationClient &client, ReclaimSignalCb signal,
+                               ReclaimCallbacks callbacks)
+    : checkpoints_(checkpoints), client_(client), signal_(std::move(signal)),
+      callbacks_(std::move(callbacks)) {}
+VoidResult ReclaimHandler::handle(const ReclaimNotification &notification) {
+  cancel_ = false;
+  auto fail = [&](Error error) -> VoidResult {
+    if (callbacks_.aborted)
+      callbacks_.aborted(notification.job_id, error);
+    return error;
   };
-  cb.on_complete = [](const JobId& jid, bool ok) {
-    LOG_INFO("Checkpoint complete: job=%s ok=%d", jid.c_str(), (int)ok);
-  };
-
-  if (auto r = ckpt_mgr_.take_checkpoint(notif.job_id, notif.vram_bytes, cb); !r) {
-    return Error{"Checkpoint failed: " + r.error().msg};
+  if (notification.type == ReclaimType::EMERGENCY) {
+    if (!callbacks_.recover)
+      return fail(
+          Error{"No committed-replica recovery callback is configured"});
+    auto result = callbacks_.recover(notification);
+    auto stopped = checkpoints_.runtime().stop(notification.job_id);
+    if (!result)
+      return fail(result.error());
+    return stopped;
   }
-
-
-  auto resp_res = signal_cb_(notif);
-  if (!resp_res) {
-    return Error{"Coordinator signal failed: " + resp_res.error().msg};
+  if (notification.deadline_s <= 0)
+    return fail(Error{"Scheduled reclaim requires positive notice"});
+  const int64_t started = now_ns();
+  auto response = signal_(notification);
+  if (!response)
+    return fail(response.error());
+  const int64_t deadline =
+      response.value().deadline_ns > 0
+          ? response.value().deadline_ns
+          : started + static_cast<int64_t>(notification.deadline_s * 1e9);
+  if (notification.type == ReclaimType::SCHEDULED) {
+    auto size = checkpoints_.runtime().state_size(notification.job_id);
+    if (!size)
+      return fail(size.error());
+    if (!callbacks_.final_checkpoint_feasible ||
+        !callbacks_.final_checkpoint_feasible(notification, size.value(),
+                                              response.value())) {
+      if (callbacks_.recover)
+        return callbacks_.recover(notification);
+      return fail(
+          Error{"Final application checkpoint cannot fit the reclaim window"});
+    }
+    if (auto result = checkpoints_.take_checkpoint(
+            notification.job_id, size.value(), {}, true, deadline);
+        !result)
+      return fail(result.error());
   }
-  const ReclaimResponse& resp = resp_res.value();
-  LOG_INFO("ReclaimHandler: coordinator assigned dst=%s:%d bps=%.0f",
-           resp.dst_node.c_str(), resp.dst_port, resp.allocated_bps);
-
-
-  auto meta_res = ckpt_mgr_.latest_meta(notif.job_id);
-  if (!meta_res) {
-    return Error{"No checkpoint meta for " + notif.job_id};
-  }
-
+  auto checkpoint = checkpoints_.latest_meta(notification.job_id);
+  if (!checkpoint)
+    return fail(checkpoint.error());
   MigrationParams params;
-  params.job_id          = notif.job_id;
-  params.dst_host        = resp.dst_node;
-  params.dst_port        = resp.dst_port;
-  params.checkpoint_path = meta_res.value().path;
-  params.allocated_bps   = resp.allocated_bps;
-  params.deadline_s      = resp.deadline_s;
-  params.resume_seq      = 0;
-
-  std::atomic<bool> cancel{false};
-  TransferProgressCb prog_cb = [&notif](uint64_t b) {
-    LOG_DEBUG("Migration progress: job=%s bytes=%llu",
-              notif.job_id.c_str(), (unsigned long long)b);
+  params.job_id = notification.job_id;
+  params.dst_host = response.value().dst_host.empty()
+                        ? response.value().dst_node
+                        : response.value().dst_host;
+  params.dst_port = response.value().dst_port;
+  params.checkpoint_path = checkpoint.value().path;
+  params.checkpoint = checkpoint.value();
+  params.allocated_bps = response.value().allocated_bps;
+  params.deadline_ns = deadline;
+  params.deadline_s = static_cast<double>(params.deadline_ns - now_ns()) / 1e9;
+  params.destination_runtime = response.value().destination_runtime;
+  if (callbacks_.configure_transfer)
+    callbacks_.configure_transfer(params);
+  auto progress = [&](uint64_t bytes) {
+    if (callbacks_.progress) {
+      auto result = callbacks_.progress(notification.job_id, bytes, false);
+      if (!result)
+        cancel_ = true;
+    }
   };
-
-  if (auto r = mig_client_.send(params, prog_cb, cancel); !r) {
-    return Error{"Migration send failed: " + r.error().msg};
+  auto sent = client_.send(params, progress, cancel_);
+  if (!sent) {
+    if (notification.type == ReclaimType::SCHEDULED)
+      checkpoints_.runtime().resume(notification.job_id);
+    return fail(sent.error());
   }
-
-
-  ckpt_mgr_.purge(notif.job_id);
-  LOG_INFO("ReclaimHandler: reclaim complete for job %s", notif.job_id.c_str());
-  return ok_void();
+  if (callbacks_.progress) {
+    auto completed = callbacks_.progress(notification.job_id,
+                                         checkpoint.value().size_bytes, true);
+    if (!completed)
+      return fail(completed.error());
+  }
+  if (auto result = checkpoints_.runtime().stop(notification.job_id); !result)
+    return fail(result.error());
+  return checkpoints_.purge(notification.job_id);
 }
-
-}
+void ReclaimHandler::cancel() { cancel_ = true; }
 }
