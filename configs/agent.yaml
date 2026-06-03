@@ -13,7 +13,15 @@ checkpoint_dir:         "/var/reclaimnet/checkpoints"
 tls_cert_path:          "certs/agent.crt"
 tls_key_path:           "certs/agent.key"
 tls_ca_path:            "certs/ca.crt"
-mtls_enabled:           false
-telemetry_interval_s:   5.0
+mtls_enabled:           true
+telemetry_interval_s:   0.1
 heartbeat_interval_s:   30.0
 migration_recv_buf:     67108864
+advertise_address: node-001:50052
+migration_port: 7600
+control_poll_s: 0.1
+bpf_object_dir: data_plane
+jwt_public_key_path: certs/jwt.pub
+ebpf_enabled: true
+gpu_isolation_enabled: true
+seccomp_profile: docker/seccomp.json

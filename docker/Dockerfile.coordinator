@@ -1,32 +1,44 @@
-FROM ubuntu:22.04 AS builder
-
+FROM ubuntu:24.04 AS grpc-builder
 ARG DEBIAN_FRONTEND=noninteractive
+ARG RECLAIMNET_BUILD_JOBS=4
+ENV RECLAIMNET_BUILD_JOBS=${RECLAIMNET_BUILD_JOBS}
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake git pkg-config \
-    libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc \
-    libsqlite3-dev libyaml-cpp-dev nlohmann-json3-dev \
+    build-essential cmake git ca-certificates pkg-config \
+    libssl-dev zlib1g-dev libsqlite3-dev libyaml-cpp-dev nlohmann-json3-dev \
+    libbpf-dev libelf-dev python3-dev python3-venv libgtest-dev \
     && rm -rf /var/lib/apt/lists/*
-
+COPY scripts/build_grpc.sh /usr/local/bin/build-reclaimnet-grpc
+RUN bash /usr/local/bin/build-reclaimnet-grpc /opt/grpc /tmp/grpc-src \
+    && rm -rf /tmp/grpc-src
+FROM grpc-builder AS builder
+RUN python3 -m venv /opt/reclaimnet-python \
+    && /opt/reclaimnet-python/bin/pip install --no-cache-dir \
+       pybind11==2.13.6 numpy==1.26.4 torch==2.5.1 transformers==4.46.3
+ENV PATH=/opt/reclaimnet-python/bin:/opt/grpc/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/grpc/lib
 WORKDIR /src
 COPY . .
-
-RUN cmake -S . -B build \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/opt/reclaimnet \
-    && cmake --build build --parallel $(nproc) \
-    && cmake --install build
-
-
-FROM ubuntu:22.04 AS runtime
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_PREFIX_PATH=/opt/grpc -DCMAKE_INSTALL_PREFIX=/opt/reclaimnet \
+    -DRECLAIMNET_APP_BRIDGE_DIR=/opt/reclaimnet/share/reclaimnet/python \
+    -DPython3_EXECUTABLE=/opt/reclaimnet-python/bin/python \
+    -Dpybind11_DIR=$(/opt/reclaimnet-python/bin/python -m pybind11 --cmakedir) \
+    && cmake --build build --parallel ${RECLAIMNET_BUILD_JOBS} \
+    && cmake --install build \
+    && ctest --test-dir build --output-on-failure
+FROM ubuntu:24.04 AS runtime
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgrpc++1 libprotobuf23 libsqlite3-0 libyaml-cpp0.7 \
+    libssl3t64 zlib1g libsqlite3-0 libyaml-cpp0.8 ca-certificates openssl \
     && rm -rf /var/lib/apt/lists/*
-
+COPY --from=builder /opt/grpc /opt/grpc
 COPY --from=builder /opt/reclaimnet /opt/reclaimnet
 COPY configs/ /etc/reclaimnet/
-
-ENV PATH=/opt/reclaimnet/bin:$PATH
-
+COPY configs/ /opt/reclaimnet/configs/
+COPY scripts/gen_certs.sh /opt/reclaimnet/gen_certs.sh
+RUN printf '%s\n' /opt/grpc/lib > /etc/ld.so.conf.d/reclaimnet-grpc.conf && ldconfig
+ENV PATH=/opt/reclaimnet/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/grpc/lib
+WORKDIR /opt/reclaimnet
 EXPOSE 50051 9090
-
 ENTRYPOINT ["coordinator", "/etc/reclaimnet/coordinator.yaml"]

@@ -1,35 +1,51 @@
-FROM ubuntu:22.04 AS builder
-
+FROM ubuntu:24.04 AS grpc-builder
 ARG DEBIAN_FRONTEND=noninteractive
+ARG RECLAIMNET_BUILD_JOBS=4
+ENV RECLAIMNET_BUILD_JOBS=${RECLAIMNET_BUILD_JOBS}
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake git pkg-config \
-    libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc \
-    libsqlite3-dev libyaml-cpp-dev nlohmann-json3-dev \
-    libbpf-dev clang llvm linux-headers-generic \
+    build-essential cmake git ca-certificates pkg-config \
+    libssl-dev zlib1g-dev libsqlite3-dev libyaml-cpp-dev nlohmann-json3-dev \
+    libbpf-dev libelf-dev python3-dev python3-venv libgtest-dev \
     && rm -rf /var/lib/apt/lists/*
-
+COPY scripts/build_grpc.sh /usr/local/bin/build-reclaimnet-grpc
+RUN bash /usr/local/bin/build-reclaimnet-grpc /opt/grpc /tmp/grpc-src \
+    && rm -rf /tmp/grpc-src
+FROM grpc-builder AS builder
+RUN python3 -m venv /opt/reclaimnet-python \
+    && /opt/reclaimnet-python/bin/pip install --no-cache-dir \
+       pybind11==2.13.6 numpy==1.26.4 torch==2.5.1 transformers==4.46.3
+ENV PATH=/opt/reclaimnet-python/bin:/opt/grpc/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/grpc/lib
 WORKDIR /src
 COPY . .
-
-RUN cmake -S . -B build \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/opt/reclaimnet \
-    && cmake --build build --parallel $(nproc) \
-    && cmake --install build
-
-
-FROM ubuntu:22.04 AS runtime
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_PREFIX_PATH=/opt/grpc -DCMAKE_INSTALL_PREFIX=/opt/reclaimnet \
+    -DRECLAIMNET_APP_BRIDGE_DIR=/opt/reclaimnet/share/reclaimnet/python \
+    -DPython3_EXECUTABLE=/opt/reclaimnet-python/bin/python \
+    -Dpybind11_DIR=$(/opt/reclaimnet-python/bin/python -m pybind11 --cmakedir) \
+    && cmake --build build --parallel ${RECLAIMNET_BUILD_JOBS} \
+    && cmake --install build \
+    && ctest --test-dir build --output-on-failure
+FROM ubuntu:24.04 AS runtime
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgrpc++1 libprotobuf23 libyaml-cpp0.7 libbpf0 \
+    libssl3t64 zlib1g libyaml-cpp0.8 libsqlite3-0 libbpf1 libelf1t64 \
+    python3 python3-venv libpython3.12 clang make libbpf-dev linux-tools-generic \
+    ca-certificates openssl docker.io \
     && rm -rf /var/lib/apt/lists/*
-
+COPY --from=builder /opt/grpc /opt/grpc
 COPY --from=builder /opt/reclaimnet /opt/reclaimnet
-COPY --from=builder /src/data_plane/*.bpf.o /opt/reclaimnet/data_plane/
+COPY --from=builder /opt/reclaimnet-python /opt/reclaimnet-python
+COPY data_plane/ /opt/reclaimnet/data_plane/
+COPY docker/seccomp.json /opt/reclaimnet/docker/seccomp.json
+COPY scripts/docker_agent_entrypoint.sh /opt/reclaimnet/docker_agent_entrypoint.sh
 COPY configs/agent.yaml /etc/reclaimnet/agent.yaml
-
-ENV PATH=/opt/reclaimnet/bin:$PATH
-
-
-
-
-ENTRYPOINT ["node_agent", "/etc/reclaimnet/agent.yaml"]
+RUN printf '%s\n' /opt/grpc/lib > /etc/ld.so.conf.d/reclaimnet-grpc.conf && ldconfig
+ENV PATH=/opt/reclaimnet/bin:/opt/reclaimnet-python/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/grpc/lib
+ENV PYTHONPATH=/opt/reclaimnet/share/reclaimnet/python
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+WORKDIR /opt/reclaimnet
+EXPOSE 50052 7600
+ENTRYPOINT ["bash", "/opt/reclaimnet/docker_agent_entrypoint.sh"]

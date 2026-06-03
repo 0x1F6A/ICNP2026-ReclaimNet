@@ -1,38 +1,59 @@
-version: "3.9"
-
 services:
+  certificates:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.coordinator
+    image: reclaimnet/coordinator:latest
+    entrypoint: ["bash", "-c", "if [ ! -s /certs/jwt.pub ]; then bash /opt/reclaimnet/gen_certs.sh /certs node-001; fi; install -m 644 /certs/ca.crt /certs/jwt.pub /certs/agent.crt /agent-certs/; install -m 600 /certs/agent.key /agent-certs/"]
+    volumes:
+      - coordinator-certificates:/certs
+      - agent-certificates-001:/agent-certs
   coordinator:
     build:
       context: ..
       dockerfile: docker/Dockerfile.coordinator
     image: reclaimnet/coordinator:latest
-    container_name: reclaimnet-coordinator
+    hostname: coordinator
     ports:
       - "50051:50051"
       - "9090:9090"
+    depends_on:
+      certificates:
+        condition: service_completed_successfully
     volumes:
-      - ./configs:/etc/reclaimnet:ro
-      - coordinator-data:/data
-    environment:
-      - RECLAIMNET_LOG_LEVEL=INFO
-
+      - coordinator-certificates:/opt/reclaimnet/certs:ro
+      - coordinator-data:/opt/reclaimnet/data
+    networks:
+      reclaimnet:
+        aliases: [coordinator]
   agent-001:
+    profiles: [gpu]
     build:
       context: ..
       dockerfile: docker/Dockerfile.agent
     image: reclaimnet/agent:latest
-    container_name: reclaimnet-agent-001
-    cap_add:
-      - NET_ADMIN
-    network_mode: host
+    hostname: node-001
+    gpus: all
+    cap_add: [NET_ADMIN, BPF, PERFMON, IPC_LOCK, SYS_ADMIN]
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    security_opt:
+      - seccomp=./seccomp.json
     depends_on:
-      - coordinator
-    environment:
-      - RECLAIMNET_NODE_ID=node-001
+      coordinator:
+        condition: service_started
     volumes:
-      - ./configs/agent.yaml:/etc/reclaimnet/agent.yaml:ro
+      - agent-certificates-001:/opt/reclaimnet/certs:ro
       - agent-ckpt-001:/var/reclaimnet/checkpoints
-
+    networks:
+      reclaimnet:
+        aliases: [node-001]
 volumes:
+  coordinator-certificates:
+  agent-certificates-001:
   coordinator-data:
   agent-ckpt-001:
+networks:
+  reclaimnet:

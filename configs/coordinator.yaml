@@ -4,8 +4,11 @@
 
 listen_address:       "0.0.0.0:50051"
 epoch_seconds:        30.0
-B_ckpt_bps:           10000000000
-migration_share:      0.40
+B_ckpt_bps:           7000000000
+migration_share:      0.70
+p3_bmin_bps:          50000000
+p1_beta:              0.20
+p1_loss_budget_s:      18000.0
 alpha:                1.0
 beta:                 2.0
 gamma:                0.5
@@ -14,8 +17,21 @@ prometheus_port:      9090
 tls_cert_path:        "certs/coordinator.crt"
 tls_key_path:         "certs/coordinator.key"
 tls_ca_path:          "certs/ca.crt"
-mtls_enabled:         false
+mtls_enabled:         true
 heartbeat_timeout_s:  90.0
 topology_file:        "configs/topology.json"
 hazard_decay_s:       3600.0
 max_migration_queue:  64
+hazard_window_s: 3600
+capacity_window_s: 300
+capacity_confidence_factor: 0.8
+p2_k_min: 2
+p2_load_limit_pct: 80
+minimum_useful_transfer_s: 1
+restore_time_s: 5
+trace_dir: data/trace
+run_id: reclaimnet-runtime
+jwt_enabled: true
+jwt_private_key_path: certs/jwt.key
+jwt_public_key_path: certs/jwt.pub
+jwt_lifetime_s: 120
