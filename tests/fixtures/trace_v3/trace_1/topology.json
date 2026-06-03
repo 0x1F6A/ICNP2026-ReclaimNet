@@ -1,0 +1,469 @@
+{
+  "run_id": "reclaimnet-export-20260415",
+  "source": "cluster_topology",
+  "directed": false,
+  "links": [
+    {
+      "src": "node-001",
+      "dst": "sw-A-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-002",
+      "dst": "sw-A-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-003",
+      "dst": "sw-A-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-004",
+      "dst": "sw-A-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-005",
+      "dst": "sw-A-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-006",
+      "dst": "sw-A-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-007",
+      "dst": "sw-A-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-008",
+      "dst": "sw-A-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-009",
+      "dst": "sw-A-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-010",
+      "dst": "sw-A-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-011",
+      "dst": "sw-B-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-012",
+      "dst": "sw-B-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-013",
+      "dst": "sw-B-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-014",
+      "dst": "sw-B-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-015",
+      "dst": "sw-B-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-016",
+      "dst": "sw-B-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-017",
+      "dst": "sw-B-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-018",
+      "dst": "sw-B-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-019",
+      "dst": "sw-B-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-020",
+      "dst": "sw-B-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-021",
+      "dst": "sw-A-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-022",
+      "dst": "sw-A-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-023",
+      "dst": "sw-A-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-024",
+      "dst": "sw-A-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-025",
+      "dst": "sw-A-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-026",
+      "dst": "sw-A-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-027",
+      "dst": "sw-A-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-028",
+      "dst": "sw-A-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-029",
+      "dst": "sw-B-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-030",
+      "dst": "sw-B-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-031",
+      "dst": "sw-B-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-032",
+      "dst": "sw-B-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-033",
+      "dst": "sw-B-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-034",
+      "dst": "sw-B-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-035",
+      "dst": "sw-B-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-036",
+      "dst": "sw-C-r1",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-037",
+      "dst": "sw-C-r1",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-038",
+      "dst": "sw-C-r1",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-039",
+      "dst": "sw-C-r1",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-040",
+      "dst": "sw-C-r1",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-041",
+      "dst": "sw-C-r1",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-042",
+      "dst": "sw-C-r1",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-043",
+      "dst": "sw-C-r1",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-044",
+      "dst": "sw-D-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-045",
+      "dst": "sw-D-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-046",
+      "dst": "sw-D-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-047",
+      "dst": "sw-D-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-048",
+      "dst": "sw-D-r1",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-049",
+      "dst": "sw-D-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-050",
+      "dst": "sw-D-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-051",
+      "dst": "sw-D-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-052",
+      "dst": "sw-D-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "node-053",
+      "dst": "sw-D-r2",
+      "bandwidth_bps": 1000000000,
+      "latency_us": 3.0,
+      "level": "IntraRack"
+    },
+    {
+      "src": "sw-A-r1",
+      "dst": "sw-A-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 12.0,
+      "level": "InterRack"
+    },
+    {
+      "src": "sw-A-r2",
+      "dst": "sw-A-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 12.0,
+      "level": "InterRack"
+    },
+    {
+      "src": "sw-B-r1",
+      "dst": "sw-B-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 12.0,
+      "level": "InterRack"
+    },
+    {
+      "src": "sw-B-r2",
+      "dst": "sw-B-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 12.0,
+      "level": "InterRack"
+    },
+    {
+      "src": "sw-C-r1",
+      "dst": "sw-C-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 12.0,
+      "level": "InterRack"
+    },
+    {
+      "src": "sw-D-r1",
+      "dst": "sw-D-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 12.0,
+      "level": "InterRack"
+    },
+    {
+      "src": "sw-D-r2",
+      "dst": "sw-D-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 12.0,
+      "level": "InterRack"
+    },
+    {
+      "src": "sw-A-core",
+      "dst": "sw-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 40.0,
+      "level": "CrossBuilding"
+    },
+    {
+      "src": "sw-B-core",
+      "dst": "sw-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 40.0,
+      "level": "CrossBuilding"
+    },
+    {
+      "src": "sw-C-core",
+      "dst": "sw-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 40.0,
+      "level": "CrossBuilding"
+    },
+    {
+      "src": "sw-D-core",
+      "dst": "sw-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 40.0,
+      "level": "CrossBuilding"
+    },
+    {
+      "src": "coordinator",
+      "dst": "sw-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 25.0,
+      "level": "CoreCrossing"
+    },
+    {
+      "src": "checkpoint-store",
+      "dst": "sw-core",
+      "bandwidth_bps": 10000000000,
+      "latency_us": 30.0,
+      "level": "CoreCrossing"
+    }
+  ]
+}
