@@ -1,0 +1,190 @@
+{
+  "schema_version": 3,
+  "run_id": "reclaimnet-export-20260501",
+  "source": "coordinator_export",
+  "policy": "reclaimnet",
+  "trace_kind": "cluster_export",
+  "timezone": "Asia/Taipei",
+  "window_start": "2026-03-01T00:00:00+08:00",
+  "window_end": "2026-05-01T00:00:00+08:00",
+  "event_source_counts": {
+    "natural": 421,
+    "sampled": 426
+  },
+  "provider_nodes": 53,
+  "coordinator_nodes": 1,
+  "parameters": {
+    "p1_beta": 0.2,
+    "p1_control_epoch_s": 30.0,
+    "p1_loss_budget_s": 18000.0,
+    "p1_global_budget_bps": 7000000000,
+    "p1_hazard_estimator": "point_estimate",
+    "p2_alpha": 1.0,
+    "p2_k_min": 2,
+    "p2_load_limit_pct": 80.0,
+    "p3_beta": 0.3,
+    "p3_bmin_bps": 50000000,
+    "p3_min_useful_transfer_s": 1.0,
+    "causal_capacity_lower_bound_factor": 0.8,
+    "p2_fixed_point_iterations": 7
+  },
+  "counts": {
+    "nodes": 53,
+    "gpus": 87,
+    "jobs": 312,
+    "job_classes": {
+      "SINGLE_GPU": 214,
+      "SINGLE_NODE_MULTI_GPU": 64,
+      "DISTRIBUTED": 34
+    },
+    "reclaims": 847,
+    "reclaim_types": {
+      "SCHEDULED": 491,
+      "EMERGENCY": 356
+    },
+    "migrations": 847,
+    "node_storage_invalidations": 847,
+    "successful_primary_paths": 592,
+    "successful_fallback_recoveries": 255,
+    "resolved_recoveries": 847,
+    "p1_allocation_epochs": 2670,
+    "checkpoints": 2592,
+    "p2_decisions": 1338,
+    "p2_candidates": 58777,
+    "historical_migration_profiles": 53,
+    "flows": 3564
+  },
+  "summary": {
+    "run_id": "reclaimnet-export-20260501",
+    "policy": "reclaimnet",
+    "submitted_gpu_hours": 4890.0,
+    "scheduled_handoff_success_pct": 73.5234215885947,
+    "emergency_direct_checkpoint_recovery_success_pct": 64.88764044943821,
+    "primary_recovery_path_success_pct": 69.89374262101535,
+    "resolved_recovery_pct": 100.0,
+    "scheduled_median_downtime_s": 15.184183765,
+    "emergency_median_downtime_s": 56.958731697999994,
+    "median_downtime_s": 26.481010753,
+    "right_censored_recoveries": 0,
+    "rollback_loss_gpu_hours": 1057.4514173431428,
+    "downtime_loss_gpu_hours_resolved_only": 166.80727871554583,
+    "objective_work_loss_gpu_hours_resolved_only": 1224.2586960586887,
+    "same_building_share_among_successful_primary_paths_pct": 99.32432432432432,
+    "same_building_successful_primary_path_count": 588,
+    "successful_primary_path_count": 592,
+    "successful_fallback_recovery_count": 255,
+    "resolved_recovery_count": 847,
+    "same_building_resolved_recovery_count": 715,
+    "same_building_share_among_resolved_recoveries_pct": 84.41558441558442,
+    "distributed_median_downtime_s": 88.11166978349999,
+    "executed_gpu_hours": 2928.20497840634,
+    "mean_gpu_utilization_pct": 68.65116393442624
+  },
+  "files": {
+    "bandwidth_samples.jsonl": {
+      "bytes": 33124378,
+      "sha256": "f1d357881026a2a856542d5902af6be3a163fb74bbb75c4f2f9ab19a5cf492d9"
+    },
+    "checkpoints.jsonl": {
+      "bytes": 17585284,
+      "sha256": "e3325e5f1895ea66c2b5044845fc3c5e1eca9f94a10c1bb2baae314167e1c47d"
+    },
+    "controlled_test_metrics.json": {
+      "bytes": 444,
+      "sha256": "21839e2b71705fa11d91b8e7d41f512751cbdeebe691954b9a40ab3ee3c78733"
+    },
+    "core_bandwidth_samples.jsonl": {
+      "bytes": 614813,
+      "sha256": "49ec18ee73951ce185179d1cb7a884b39cfa3b2d31a43b7e530a94ba830d3c38"
+    },
+    "events.jsonl": {
+      "bytes": 11420330,
+      "sha256": "09171d34acd95eb4e1f669296b05fe9cb44cb99400c95b91028c3668c8036d85"
+    },
+    "experiment_summary.json": {
+      "bytes": 1193,
+      "sha256": "0c50cad115dc80c729f9be4581428ec7875d50279c555d84614f1c4a848d78b2"
+    },
+    "flows.jsonl": {
+      "bytes": 7486187,
+      "sha256": "bc76a08bce07ed3741aac4ec994be62505791fdc0159124ccb8ead509fb332b4"
+    },
+    "hazard_samples.jsonl": {
+      "bytes": 6863650,
+      "sha256": "0398f31505562b9d99d000e9341934b02100e1da42983c39809d8c050d0d4892"
+    },
+    "historical_migration_profiles.jsonl": {
+      "bytes": 19671,
+      "sha256": "dc1413b14e0b783cbd4e4a47e68e3857bf10bf11507661c552740f5f3c4bac6c"
+    },
+    "job_reclaims.jsonl": {
+      "bytes": 265272,
+      "sha256": "94a03b28668504e374e34f5b9e2e29f47aa6b6c5194141345d0150fd123464fa"
+    },
+    "job_segments.jsonl": {
+      "bytes": 827776,
+      "sha256": "72c43c4491950b2573b7783071e50b520aedd53c6126253dd4445875a12f5565"
+    },
+    "jobs.jsonl": {
+      "bytes": 747205,
+      "sha256": "d7b155f18a0da672ab65dc1d30b0b473ac614238e368986aac7144eec352ddaf"
+    },
+    "migrations.jsonl": {
+      "bytes": 4443031,
+      "sha256": "a1b92d498a621c21ef36d3e6505de0e2b4b60c77663448b2aaca9832a00e6dc6"
+    },
+    "node_storage_invalidations.jsonl": {
+      "bytes": 255794,
+      "sha256": "3fb60287da5fb63724a15250d7a8f5fee651b953194735242ba08df8bdcd4a08"
+    },
+    "nodes.json": {
+      "bytes": 31564,
+      "sha256": "1a5e0160755bd0c963eff339bf445cb4268c621527332b8e00d180aa52d92dd4"
+    },
+    "operation_segments.jsonl": {
+      "bytes": 561866,
+      "sha256": "6488bf00696d11ebc665fcdb2e4c3dbf683e09070d3b50b52ed9f85b92f707b8"
+    },
+    "p1_allocation_epochs.jsonl": {
+      "bytes": 13719645,
+      "sha256": "cf9a1da7ceffd2b01d2289ec4e92f03b8f2829d391f44f5af53c590259921511"
+    },
+    "p2_candidates.jsonl": {
+      "bytes": 187514127,
+      "sha256": "1ab1283d4199dda0b0b2eadd9f1dae8841a01a859bdf5d2e8cfd2ee4b61a4f39"
+    },
+    "p2_decisions.jsonl": {
+      "bytes": 726338,
+      "sha256": "995a2c07e60230d0a4e7286b3aaca34ee4dcb483490fc2e017f887a05ac03603"
+    },
+    "placement_events.jsonl": {
+      "bytes": 851386,
+      "sha256": "b2c22dc8837f0306ac64604cd56f77f4627c76c462260ff79c1ddda6849fe9f6"
+    },
+    "reclaimnet.db": {
+      "bytes": 338419712,
+      "sha256": "b95ce3005f715f83073581a94278e36e3815e88f4bb3ad88c17d5d6ab37a364a"
+    },
+    "reclaims.jsonl": {
+      "bytes": 81492,
+      "sha256": "6de6c6a4b8204df2f8d9d1225e840e9d347d9c772a15ad40754f2aca627edbdd"
+    },
+    "reported_live_gpu_utilization_daily.jsonl": {
+      "bytes": 2677,
+      "sha256": "4907345bfe2f660810450cd21b861d00a15f331e15b03e47e3699e4781772a06"
+    },
+    "schema.json": {
+      "bytes": 1044,
+      "sha256": "fe2f08c073312b1cf25284a46be1a3e44ec13836222c1d1e19ac2e7cca484766"
+    },
+    "telemetry.jsonl": {
+      "bytes": 30530107,
+      "sha256": "547ec0d6da23c9527acaa9a26aa8e9eacc91d118c7c0a0eab7967c8c355a33bc"
+    },
+    "topology.json": {
+      "bytes": 10027,
+      "sha256": "3ce3399ff5c2ace8b1a0aaa82bc372b096205a9492bbc131f641e128a92728a9"
+    }
+  },
+  "exported_at": "2026-05-01T02:45:56+08:00"
+}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 3,
+  "canonical_units": {
+    "*_bytes": "bytes",
+    "*_bps": "bits_per_second",
+    "*_ns": "unix_epoch_nanoseconds",
+    "*_s": "seconds",
+    "lambda_e": "events_per_second",
+    "gpu_util_pct": "percent_0_to_100"
+  },
+  "enums": {
+    "NodeState": {
+      "UNKNOWN": 0,
+      "ONLINE": 1,
+      "DEGRADED": 2,
+      "OFFLINE": 3,
+      "DRAINING": 4
+    },
+    "JobState": {
+      "UNKNOWN": 0,
+      "RUNNING": 1,
+      "CHECKPOINTING": 2,
+      "MIGRATING": 3,
+      "SUSPENDED": 4,
+      "COMPLETED": 5,
+      "FAILED": 6
+    },
+    "ReclaimType": {
+      "SCHEDULED": 0,
+      "EMERGENCY": 1
+    },
+    "MigrationPhase": {
+      "IDLE": 0,
+      "ADMITTED": 1,
+      "TRANSFERRING": 2,
+      "RESTORING": 3,
+      "COMPLETED": 4,
+      "ABORTED": 5
+    },
+    "TopologyLevel": {
+      "IntraRack": 0,
+      "IntraBuilding": 1,
+      "CrossBuilding": 2,
+      "CoreCrossing": 3
+    }
+  },
+  "topology_cost": {
+    "IntraRack": 0.0,
+    "IntraBuilding": 0.3,
+    "CrossBuilding": 0.7,
+    "CoreCrossing": 1.0
+  }
+}
