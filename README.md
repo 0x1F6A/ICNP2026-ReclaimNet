@@ -60,4 +60,4 @@ docker compose up --build
 
 ## License
 
-MIT – see [LICENSE](LICENSE).
+
