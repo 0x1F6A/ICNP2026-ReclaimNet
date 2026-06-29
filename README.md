@@ -32,26 +32,26 @@ agent with separate credentials and the supplied seccomp policy.
 ## Protocol behavior
 
 - P1 uses capped cube-root bandwidth allocation, checkpoint interval bounds,
-  actual checkpoint payload sizes, and shared-path capacity constraints.
+  checkpoint payload sizes, and shared-path capacity constraints.
 - P2 filters GPU and VRAM capacity, CUDA compatibility, building diversity, and
   hazard estimates, then scores destinations and matches gang ranks.
 - P3 admits batches in EDF order and distributes surplus bandwidth with max-min
-  water filling over complete paths. Versioned rate updates follow actual
-  checkpoint sizes and cumulative transfer progress.
-- Periodic checkpoints require durable replica ACKs. Planned reclaim captures
-  paused application state and transfers it within the absolute deadline.
-  Emergency reclaim restores the latest committed surviving full-rank checkpoint.
-- Recovery starts applications after all ranks restore and all source nodes
-  stop. Pending handoffs, checkpoint metadata, and estimator history persist in
-  SQLite.
+  water filling along each migration path. Rate updates are versioned and track
+  checkpoint sizes and transfer progress.
+- Periodic checkpoints are committed after the replica acknowledges them.
+  Scheduled reclaim pauses the application, takes a final checkpoint, and
+  transfers it within the notice window. Emergency reclaim restores from the
+  latest committed checkpoint.
+- Recovered jobs restart after all ranks are restored and the source nodes have
+  stopped. Pending handoffs, checkpoint metadata, and estimator history are
+  stored in SQLite.
 - The node agent executes checkpoint plans, controls application lifecycle,
   allocates GPU devices, configures TC flow policies, reports telemetry, and
-  exports actual transfer records.
+  exports transfer records.
 
-## Trace v3 compatibility
+## Trace format
 
-The typed JSON/JSONL readers and writers preserve extension fields and exact
-integer timestamps from `trace_all.zip`.
+Trace files use the trace v3 JSON/JSONL format of `trace_all.zip`.
 
 | Field | Unit or meaning |
 |---|---|
@@ -63,18 +63,16 @@ integer timestamps from `trace_all.zip`.
 | Reclaim type | `SCHEDULED=0`, `EMERGENCY=1` |
 | Topology level | IntraRack, IntraBuilding, CrossBuilding, CoreCrossing |
 
-SQLite retains the original `jobs`, `nodes`, and `events` columns. Runtime
-scheduling and telemetry fields use side tables. The trace exporter writes the
-eight JSONL families, node inventory, schema, and manifest with file sizes,
-record counts, and SHA-256 hashes.
+Runtime scheduling and telemetry fields are stored in separate SQLite tables.
+The trace exporter writes the JSONL files, node inventory, schema, and a
+manifest with file sizes, record counts, and SHA-256 hashes.
 
 ```bash
 python3 scripts/check_trace_compat.py ../trace_all.zip --full
 ```
 
-The validator reads all five runs and replays every P1 epoch through the actual
-C++ allocator. It validates typed-reader/writer round trips for the other
-supported trace families.
+The script replays the P1 epochs in the archive through the C++ allocator and
+checks reader/writer round trips for the other trace files.
 
 ## Run
 
